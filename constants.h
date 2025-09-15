@@ -1,24 +1,67 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+// SCREEN
 #define SCREENWIDTH 400
 #define SCREENHEIGHT 400
 #define X_TILES 8
 #define Y_TILES 8
 
-#define PIECE_PATH "./assets/pieces"
+#define PIECE_TYPES 6
+
+// PATHS
+#define WHITE_PIECES_PATH "./assets/pieces/white"
+#define BLACK_PIECES_PATH "./assets/pieces/black"
+
 #define MAX_NAME_LENGTH 10
-#define MAX_ASSET_PATH 30
-#define KING_NO 1
-#define BISHOP_NO 2
-#define QUEEN_NO 1
-#define ROOK_NO 2
-#define KNIGHT_NO 3
-#define PAWN_NO 8
+#define MAX_ASSET_PATH 35
+
+// PIECES RANK
+#define BLACK_Y 8
+#define WHITE_Y 1
+
+// PAWN RANK
+#define WPAWNY 2
+#define BPAWNY 7
+
+// IMAGE FORMAT
+#define SVG_WIDTH 45
+#define SVG_HEIGHT 45
+
+// IMAGE FILE NAME
+#define KING_FILE_NAME "king.svg"
+#define BISHOP_FILE_NAME "bishop.svg"
+#define QUEEN_FILE_NAME "queen.svg"
+#define ROOK_FILE_NAME "rook.svg"
+#define KNIGHT_FILE_NAME "knight.svg"
+#define PAWN_FILE_NAME "pawn.svg"
+
+// PIECE NAME
+#define KING_NAME "King"
+#define BISHOP_NAME "Bishop"
+#define QUEEN_NAME "Queen"
+#define ROOK_NAME "Rook"
+#define KNIGHT_NAME "Knight"
+#define PAWN_NAME "Pawn"
+
+// XPOSITIONS
+extern const int PAWN_X[];
+extern const int BISHOP_X[];
+extern const int QUEEN_X[];
+extern const int KING_X[];
+extern const int ROOK_X[];
+extern const int KNIGHT_X[];
 
 // CALCULATIONS
 #define TILE_WIDTH (SCREENWIDTH / X_TILES)
 #define TILE_HEIGHT (SCREENHEIGHT / Y_TILES)
-#define SVG_WIDTH TILE_WIDTH - 10
-#define SVG_HEIGHT TILE_HEIGHT - 10
+
+// NO OF PIECES
+extern const int KING_NO;
+extern const int BISHOP_NO;
+extern const int QUEEN_NO;
+extern const int ROOK_NO;
+extern const int KNIGHT_NO;
+extern const int PAWN_NO;
+
 #endif

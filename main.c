@@ -17,14 +17,16 @@ SDL_Renderer *renderer = NULL;
 tileNode *headDarkTile = NULL;
 tileNode *headLightTile = NULL;
 
-pieceNode *headPiece = NULL;
+pieceNode *blackHeadPiece = NULL;
+pieceNode *whiteHeadPiece = NULL;
+int colour = 0;
+
 char **pieces = NULL;
 int piece_no = 0;
 
 float mouseX, mouseY;
 coords *mouse_pos = NULL;
 #pragma endregion Globals
-
 // FUNCTIONS
 void initialise_window()
 {
@@ -77,56 +79,6 @@ void setup(void)
     tileNode *tempTile;
     size_t tileNode_size = sizeof(tileNode);
     bool offset;
-
-#pragma region DarkTiles
-    offset = true;
-    headDarkTile = SDL_malloc(tileNode_size);
-    if (headDarkTile == NULL)
-    {
-        accident();
-        fprintf(stderr, "headDarkTile\n");
-        return;
-    }
-    tempTile = headDarkTile;
-    for (int y = start_Y; y <= maxTileY; y += TILE_HEIGHT)
-    {
-        if (tempTile == NULL)
-        {
-            break;
-        }
-        if (offset)
-        {
-            start_X = TILE_WIDTH;
-        }
-        else
-        {
-            start_X = 0;
-        }
-        offset = !offset;
-
-        for (int x = start_X; x <= maxTileX; x += 2 * TILE_WIDTH)
-        {
-            SDL_FRect temp_rect = {x, y, TILE_WIDTH, TILE_HEIGHT};
-            tempTile->rect = temp_rect;
-            tempTile->pos = (coords){(int)x / TILE_WIDTH + 1, 8 - (int)y / TILE_HEIGHT};
-            ;
-            if (y + TILE_HEIGHT > maxTileY && x + 2 * TILE_WIDTH > maxTileX)
-            {
-                tempTile->next = NULL;
-                tempTile = tempTile->next;
-                break;
-            }
-            tempTile->next = SDL_malloc(tileNode_size);
-            if (tempTile == NULL)
-            {
-                accident();
-                fprintf(stderr, "tempTile-Dark");
-                return;
-            }
-            tempTile = tempTile->next;
-        }
-    }
-#pragma endregion DarkTiles
 
 #pragma region LightTiles
     headLightTile = SDL_malloc(tileNode_size);
@@ -181,90 +133,84 @@ void setup(void)
 #pragma endregion Board
 
 #pragma region Pieces
-    headPiece = SDL_malloc(sizeof(pieceNode));
-    if (headPiece == NULL)
+    char buffer[MAX_ASSET_PATH];
+    pieceNode *tempPiece;
+#pragma region BLACK
+    blackHeadPiece = SDL_malloc(sizeof(pieceNode));
+    if (blackHeadPiece == NULL)
     {
         accident();
-        fprintf(stderr, "headPiece");
+        fprintf(stderr, "blackHeadPiece");
         return;
     }
     size_t pieceNodeSize = sizeof(pieceNode);
-    pieceNode *tempPiece = headPiece;
-    char buffer[MAX_ASSET_PATH];
-    char *tempName;
-    pieces = SDL_GlobDirectory(PIECE_PATH, "*.svg", 0, &piece_no);
+    tempPiece = blackHeadPiece;
+    pieces = SDL_GlobDirectory(BLACK_PIECES_PATH, "*.svg", 0, &piece_no);
     if (pieces == NULL)
     {
         accident();
-        fprintf(stderr, "Pieces\n");
+        fprintf(stderr, "Black Pieces\n");
         return;
     }
 
     for (int i = 0; i < piece_no; i++)
     {
-        SDL_snprintf(buffer, sizeof(buffer), "%s/%s", PIECE_PATH, pieces[i]);
-        if (SDL_strcmp(pieces[i], "bishop.svg") == 0)
+        SDL_snprintf(buffer, sizeof(buffer), "%s/%s", BLACK_PIECES_PATH, pieces[i]);
+        if (SDL_strcmp(pieces[i], BISHOP_FILE_NAME) == 0)
         {
-            coords *pos = SDL_malloc(sizeof(coords) * BISHOP_NO);
-            pos[0] = (coords){3, 8};
-            pos[1] = (coords){6, 8};
-            tempName = "Bishop";
-            if (makePieceNode(renderer, buffer, tempPiece, BISHOP_NO, tempName, pos) == NULL)
+            if (makePieceNode(renderer, buffer, tempPiece, BISHOP_NO, BISHOP_NAME, BISHOP_X, BLACK_Y) == NULL)
             {
                 accident();
-                fprintf(stderr, "bishop.svg");
+                fprintf(stderr, BISHOP_FILE_NAME);
             };
         }
-        else if (SDL_strcmp(pieces[i], "king.svg") == 0)
+        else if (SDL_strcmp(pieces[i], KING_FILE_NAME) == 0)
         {
-            coords *pos = SDL_malloc(sizeof(coords) * KING_NO);
-            pos[0] = (coords){5, 8};
-            tempName = "King";
-            if (makePieceNode(renderer, buffer, tempPiece, KING_NO, tempName, pos) == NULL)
-                ;
-        }
-        else if (SDL_strcmp(pieces[i], "knight.svg") == 0)
-        {
-            coords *pos = SDL_malloc(sizeof(coords) * KNIGHT_NO);
-            pos[0] = (coords){2, 8};
-            pos[1] = (coords){7, 8};
-            tempName = "Knight";
-            if (makePieceNode(renderer, buffer, tempPiece, KNIGHT_NO, tempName, pos) == NULL)
-                ;
-        }
-        else if (SDL_strcmp(pieces[i], "pawn.svg") == 0)
-        {
-            coords *pos = SDL_malloc(sizeof(coords) * PAWN_NO);
-            for (int o = 0; o < PAWN_NO; o++)
+            if (makePieceNode(renderer, buffer, tempPiece, KING_NO, KING_NAME, KING_X, BLACK_Y) == NULL)
             {
-                pos[o] = (coords){o + 1, 7};
+                accident();
+                fprintf(stderr, KING_FILE_NAME);
             }
-            tempName = "Pawn";
-            if (makePieceNode(renderer, buffer, tempPiece, PAWN_NO, tempName, pos) == NULL)
-                ;
         }
-        else if (SDL_strcmp(pieces[i], "queen.svg") == 0)
+        else if (SDL_strcmp(pieces[i], KNIGHT_FILE_NAME) == 0)
         {
-            coords *pos = SDL_malloc(sizeof(coords) * QUEEN_NO);
-            pos[0] = (coords){4, 8};
-            tempName = "Queen";
-            if (makePieceNode(renderer, buffer, tempPiece, QUEEN_NO, tempName, pos) == NULL)
-                ;
+            if (makePieceNode(renderer, buffer, tempPiece, KNIGHT_NO, KNIGHT_NAME, KNIGHT_X, BLACK_Y) == NULL)
+            {
+                accident();
+                fprintf(stderr, KNIGHT_FILE_NAME);
+            }
         }
-        else if (SDL_strcmp(pieces[i], "rook.svg") == 0)
+        else if (SDL_strcmp(pieces[i], PAWN_FILE_NAME) == 0)
         {
-            coords *pos = SDL_malloc(sizeof(coords) * ROOK_NO);
-            pos[0] = (coords){1, 8};
-            pos[1] = (coords){8, 8};
-            tempName = "Rook";
-            if (makePieceNode(renderer, buffer, tempPiece, ROOK_NO, tempName, pos) == NULL)
-                ;
+            if (makePieceNode(renderer, buffer, tempPiece, PAWN_NO, PAWN_NAME, PAWN_X, BPAWNY) == NULL)
+            {
+                accident();
+                fprintf(stderr, PAWN_FILE_NAME);
+            }
+        }
+        else if (SDL_strcmp(pieces[i], QUEEN_FILE_NAME) == 0)
+        {
+
+            if (makePieceNode(renderer, buffer, tempPiece, QUEEN_NO, QUEEN_NAME, QUEEN_X, BLACK_Y) == NULL)
+            {
+                accident();
+                fprintf(stderr, QUEEN_FILE_NAME);
+            }
+        }
+        else if (SDL_strcmp(pieces[i], ROOK_FILE_NAME) == 0)
+        {
+            if (makePieceNode(renderer, buffer, tempPiece, ROOK_NO, ROOK_NAME, ROOK_X, BLACK_Y) == NULL)
+            {
+                accident();
+                fprintf(stderr, BISHOP_FILE_NAME);
+            }
         }
         else
         {
             continue;
         }
         // Next Piece?
+
         if (i == piece_no - 1)
         {
             tempPiece->next = NULL;
@@ -273,6 +219,94 @@ void setup(void)
         tempPiece->next = SDL_malloc(pieceNodeSize);
         tempPiece = tempPiece->next;
     }
+#pragma endregion BLACK
+
+#pragma region WHITE
+    whiteHeadPiece = SDL_malloc(sizeof(pieceNode));
+    if (whiteHeadPiece == NULL)
+    {
+        accident();
+        fprintf(stderr, "whiteHeadPiece\n");
+        return;
+    }
+
+    tempPiece = whiteHeadPiece;
+    pieces = SDL_GlobDirectory(WHITE_PIECES_PATH, "*.svg", 0, &piece_no);
+    if (pieces == NULL)
+    {
+        accident();
+        fprintf(stderr, "White Pieces\n");
+        return;
+    }
+
+    for (int i = 0; i < piece_no; i++)
+    {
+        SDL_snprintf(buffer, sizeof(buffer), "%s/%s", WHITE_PIECES_PATH, pieces[i]);
+        if (SDL_strcmp(pieces[i], BISHOP_FILE_NAME) == 0)
+        {
+            if (makePieceNode(renderer, buffer, tempPiece, BISHOP_NO, BISHOP_NAME, BISHOP_X, WHITE_Y) == NULL)
+            {
+                accident();
+                fprintf(stderr, BISHOP_FILE_NAME);
+            };
+        }
+        else if (SDL_strcmp(pieces[i], KING_FILE_NAME) == 0)
+        {
+            if (makePieceNode(renderer, buffer, tempPiece, KING_NO, KING_NAME, KING_X, WHITE_Y) == NULL)
+            {
+                accident();
+                fprintf(stderr, KING_FILE_NAME);
+            }
+        }
+        else if (SDL_strcmp(pieces[i], KNIGHT_FILE_NAME) == 0)
+        {
+            if (makePieceNode(renderer, buffer, tempPiece, KNIGHT_NO, KNIGHT_NAME, KNIGHT_X, WHITE_Y) == NULL)
+            {
+                accident();
+                fprintf(stderr, KNIGHT_FILE_NAME);
+            }
+        }
+        else if (SDL_strcmp(pieces[i], PAWN_FILE_NAME) == 0)
+        {
+            if (makePieceNode(renderer, buffer, tempPiece, PAWN_NO, PAWN_NAME, PAWN_X, WPAWNY) == NULL)
+            {
+                accident();
+                fprintf(stderr, PAWN_FILE_NAME);
+            }
+        }
+        else if (SDL_strcmp(pieces[i], QUEEN_FILE_NAME) == 0)
+        {
+
+            if (makePieceNode(renderer, buffer, tempPiece, QUEEN_NO, QUEEN_NAME, QUEEN_X, WHITE_Y) == NULL)
+            {
+                accident();
+                fprintf(stderr, QUEEN_FILE_NAME);
+            }
+        }
+        else if (SDL_strcmp(pieces[i], ROOK_FILE_NAME) == 0)
+        {
+            if (makePieceNode(renderer, buffer, tempPiece, ROOK_NO, ROOK_NAME, ROOK_X, WHITE_Y) == NULL)
+            {
+                accident();
+                fprintf(stderr, ROOK_FILE_NAME);
+            }
+        }
+        else
+        {
+            continue;
+        }
+        // Next Piece?
+
+        if (i == piece_no - 1)
+        {
+            tempPiece->next = NULL;
+            break;
+        }
+        tempPiece->next = SDL_malloc(pieceNodeSize);
+        tempPiece = tempPiece->next;
+    }
+#pragma endregion WHITE
+
 #pragma endregion Pieces
 }
 
@@ -291,7 +325,7 @@ void process_input(void)
         SDL_GetMouseState(&mouseX, &mouseY);
         mouse_pos->x = (int)mouseX / TILE_WIDTH + 1;
         mouse_pos->y = 8 - (int)mouseY / TILE_HEIGHT;
-        printf("%d ,%d\n", mouse_pos->x, mouse_pos->y);
+        printf("%c%d\n", chessX(mouse_pos->x), mouse_pos->y);
         break;
     case SDL_EVENT_MOUSE_BUTTON_UP:
         mouseHeld = false;
@@ -309,46 +343,22 @@ void update(void)
 
 void render(void)
 {
-    // Background
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    // DARK TILES
+    SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
     SDL_RenderClear(renderer);
-    // Board
-    tileNode *tempTile;
-    // Dark Tiles
-    SDL_SetRenderDrawColor(renderer, 100, 30, 30, 255);
-    tempTile = headDarkTile;
-    while (tempTile != NULL)
-    {
-        SDL_RenderFillRect(renderer, &tempTile->rect);
-        tempTile = tempTile->next;
-    }
 
-    // Light Tiles
+    // LIGHT TILES
     SDL_SetRenderDrawColor(renderer, 10, 150, 150, 255);
-    tempTile = headLightTile;
-    while (tempTile != NULL)
-    {
-        SDL_RenderFillRect(renderer, &tempTile->rect);
-        tempTile = tempTile->next;
-    }
-    // Pieces
-    pieceNode *tempPiece = headPiece;
+    renderTiles(renderer, headLightTile);
+    renderPieces(renderer, blackHeadPiece);
+    renderPieces(renderer, whiteHeadPiece);
 
-    while (tempPiece != NULL)
-    {
-        for (int k = 0; k < tempPiece->appearances; k++)
-        {
-            SDL_RenderTexture(renderer, tempPiece->texture, NULL, &tempPiece->rect[k]);
-        }
-        tempPiece = tempPiece->next;
-    }
     SDL_RenderPresent(renderer);
 }
 
 void clean(void)
 {
-    freePieces(headPiece);
-    freeTiles(headDarkTile);
+    freePieces(blackHeadPiece);
     freeTiles(headLightTile);
 
     SDL_free(mouse_pos);

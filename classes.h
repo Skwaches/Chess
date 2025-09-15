@@ -24,4 +24,5 @@ typedef struct pieceNode
     SDL_Texture *texture;
     struct pieceNode *next;
 } pieceNode;
+
 #endif
