@@ -22,7 +22,13 @@ typedef struct pieceNode
     coords *pos;
     SDL_FRect *rect;
     SDL_Texture *texture;
+    struct pieceNode *prev;
     struct pieceNode *next;
 } pieceNode;
 
+typedef struct Piece
+{
+    pieceNode *ptr;
+    int index;
+} Piece;
 #endif

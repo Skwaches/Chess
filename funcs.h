@@ -14,6 +14,8 @@ void freePieces(pieceNode *Headnode);
 void freeTiles(tileNode *HeadNode);
 void renderPieces(SDL_Renderer *renderer, pieceNode *HeadPiece);
 void renderTiles(SDL_Renderer *renderer, tileNode *HeadTile);
+Piece *pieceFromPos(SDL_FPoint *pos, pieceNode *HeadPiece);
+SDL_FRect rectFromPos(SDL_FPoint *pos);
 char chessX(int number);
 int realX(char letter);
 #endif

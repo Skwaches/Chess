@@ -30,6 +30,7 @@ pieceNode *makePieceNode(SDL_Renderer *renderer,
                          const int y)
 {
     tempPiece->appearances = appearances;
+
     coords *positions = SDL_malloc(appearances * sizeof(coords));
     if (positions == NULL)
     {
@@ -39,6 +40,7 @@ pieceNode *makePieceNode(SDL_Renderer *renderer,
     {
         positions[p] = (coords){x[p], y};
     }
+
     tempPiece->pos = positions;
     tempPiece->texture = maketexture(renderer, buffer);
     tempPiece->rect = SDL_malloc(sizeof(SDL_FRect) * tempPiece->appearances);
@@ -79,10 +81,12 @@ void freePieces(pieceNode *Headnode)
         SDL_free(Tempnode->rect);
         SDL_DestroyTexture(Tempnode->texture);
         SDL_free(Tempnode->name);
+        SDL_Log("%p\t%p\t%p\n", Tempnode->prev, Tempnode, Tempnode->next);
         SDL_free(Tempnode);
         Tempnode = Nextnode;
     }
 }
+
 void freeTiles(tileNode *HeadNode)
 {
     tileNode *TempNode = HeadNode;
@@ -94,6 +98,7 @@ void freeTiles(tileNode *HeadNode)
         TempNode = NextNode;
     }
 }
+
 void renderPieces(SDL_Renderer *renderer, pieceNode *HeadPiece)
 {
     pieceNode *TempPiece = HeadPiece;
@@ -101,11 +106,15 @@ void renderPieces(SDL_Renderer *renderer, pieceNode *HeadPiece)
     {
         for (int a = 0; a < TempPiece->appearances; a++)
         {
-            SDL_RenderTexture(renderer, TempPiece->texture, NULL, &TempPiece->rect[a]);
+            if (TempPiece->texture != NULL)
+            {
+                SDL_RenderTexture(renderer, TempPiece->texture, NULL, &TempPiece->rect[a]);
+            }
         }
         TempPiece = TempPiece->next;
     }
 }
+
 void renderTiles(SDL_Renderer *renderer, tileNode *HeadTile)
 {
     tileNode *TempTile = HeadTile;
@@ -186,4 +195,30 @@ int realX(char letter)
         return 0;
         break;
     }
+}
+
+// NULL if not found
+Piece *pieceFromPos(SDL_FPoint *pos, pieceNode *HeadPiece)
+{
+    pieceNode *TempPiece = HeadPiece;
+    while (TempPiece != NULL)
+    {
+        for (int k = 0; k < TempPiece->appearances; k++)
+        {
+            if (SDL_PointInRectFloat(pos, &TempPiece->rect[k]))
+            {
+                Piece *selection = SDL_malloc(sizeof(Piece));
+                selection->index = k;
+                selection->ptr = TempPiece;
+                return selection;
+            }
+        }
+        TempPiece = TempPiece->next;
+    }
+    return NULL;
+}
+
+SDL_FRect rectFromPos(SDL_FPoint *pos)
+{
+    return (SDL_FRect){pos->x - TILE_WIDTH / 2, pos->y - TILE_HEIGHT / 2, TILE_WIDTH, TILE_WIDTH};
 }

@@ -8,25 +8,25 @@
 #include "funcs.h"
 
 #pragma region Globals
-bool mouseHeld = false;
+bool leftmouseHeld = false;
+bool leftclick = false;
+
 bool running = false;
 
+Piece *selected = NULL;
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 
-tileNode *headDarkTile = NULL;
 tileNode *headLightTile = NULL;
 
 pieceNode *blackHeadPiece = NULL;
 pieceNode *whiteHeadPiece = NULL;
-int colour = 0;
 
-char **pieces = NULL;
-int piece_no = 0;
+coords *mousetile = NULL;
+SDL_FPoint *mousepos = NULL;
 
-float mouseX, mouseY;
-coords *mouse_pos = NULL;
 #pragma endregion Globals
+
 // FUNCTIONS
 void initialise_window()
 {
@@ -61,14 +61,16 @@ void accident()
 
 void setup(void)
 {
-#pragma region mouseSpace
-    mouse_pos = SDL_malloc(sizeof(int) * 2);
-    if (mouse_pos == NULL)
+#pragma region mouse
+    mousetile = SDL_malloc(sizeof(coords));
+    if (mousetile == NULL)
     {
         accident();
-        fprintf(stderr, "Mouse Pos\n");
+        fprintf(stderr, "Mouse Tile\n");
         return;
     }
+    mousepos = SDL_malloc(sizeof(SDL_FPoint *));
+
 #pragma endregion mouseSpace
 
 #pragma region Board
@@ -133,8 +135,11 @@ void setup(void)
 #pragma endregion Board
 
 #pragma region Pieces
+    char **pieces = NULL;
+    int piece_no = 0;
     char buffer[MAX_ASSET_PATH];
     pieceNode *tempPiece;
+    pieceNode *prevPiece = NULL;
 #pragma region BLACK
     blackHeadPiece = SDL_malloc(sizeof(pieceNode));
     if (blackHeadPiece == NULL)
@@ -209,13 +214,18 @@ void setup(void)
         {
             continue;
         }
-        // Next Piece?
 
+        // Previous Piece
+        tempPiece->prev = prevPiece;
+        prevPiece = tempPiece;
+        // Next Piece?
         if (i == piece_no - 1)
         {
+
             tempPiece->next = NULL;
             break;
         }
+
         tempPiece->next = SDL_malloc(pieceNodeSize);
         tempPiece = tempPiece->next;
     }
@@ -223,6 +233,7 @@ void setup(void)
 
 #pragma region WHITE
     whiteHeadPiece = SDL_malloc(sizeof(pieceNode));
+    prevPiece = NULL;
     if (whiteHeadPiece == NULL)
     {
         accident();
@@ -238,7 +249,6 @@ void setup(void)
         fprintf(stderr, "White Pieces\n");
         return;
     }
-
     for (int i = 0; i < piece_no; i++)
     {
         SDL_snprintf(buffer, sizeof(buffer), "%s/%s", WHITE_PIECES_PATH, pieces[i]);
@@ -295,16 +305,22 @@ void setup(void)
         {
             continue;
         }
-        // Next Piece?
 
+        // Previous Piece
+        tempPiece->prev = prevPiece;
+        prevPiece = tempPiece;
+        // Next Piece?
         if (i == piece_no - 1)
         {
+
             tempPiece->next = NULL;
             break;
         }
+
         tempPiece->next = SDL_malloc(pieceNodeSize);
         tempPiece = tempPiece->next;
     }
+
 #pragma endregion WHITE
 
 #pragma endregion Pieces
@@ -312,23 +328,39 @@ void setup(void)
 
 void process_input(void)
 {
+
+    // Cursor Position
+    SDL_GetMouseState(&mousepos->x, &mousepos->y);
+    mousetile->x = mousepos->x / TILE_WIDTH + 1;
+    mousetile->y = 8 - mousepos->y / TILE_HEIGHT;
+
+    leftclick = false;
+
     SDL_Event event;
     SDL_PollEvent(&event);
     switch (event.type)
     {
+
     case SDL_EVENT_QUIT:
         SDL_Quit();
         running = false;
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        mouseHeld = true;
-        SDL_GetMouseState(&mouseX, &mouseY);
-        mouse_pos->x = (int)mouseX / TILE_WIDTH + 1;
-        mouse_pos->y = 8 - (int)mouseY / TILE_HEIGHT;
-        printf("%c%d\n", chessX(mouse_pos->x), mouse_pos->y);
+        if (event.button.button == 1)
+        {
+            leftmouseHeld = true;
+            selected = pieceFromPos(mousepos, blackHeadPiece);
+        }
+
         break;
     case SDL_EVENT_MOUSE_BUTTON_UP:
-        mouseHeld = false;
+        if (event.button.button == 1)
+        {
+            leftmouseHeld = false;
+            SDL_free(selected);
+            selected = NULL;
+            leftclick = true;
+        }
         break;
 
     default:
@@ -338,7 +370,14 @@ void process_input(void)
 
 void update(void)
 {
-    // SOMETHING
+    // FPS
+    SDL_Delay(WAIT_TIME);
+
+    // UPDATE
+    if (selected)
+    {
+        selected->ptr->rect[selected->index] = rectFromPos(mousepos);
+    }
 }
 
 void render(void)
@@ -360,8 +399,8 @@ void clean(void)
 {
     freePieces(blackHeadPiece);
     freeTiles(headLightTile);
-
-    SDL_free(mouse_pos);
+    SDL_free(mousetile);
+    SDL_free(mousepos);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();

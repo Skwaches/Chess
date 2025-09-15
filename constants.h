@@ -9,7 +9,11 @@
 
 #define PIECE_TYPES 6
 
+// FPS
+#define FPS 24
+#define WAIT_TIME (1 / FPS) * 1000
 // PATHS
+
 #define WHITE_PIECES_PATH "./assets/pieces/white"
 #define BLACK_PIECES_PATH "./assets/pieces/black"
 
@@ -18,11 +22,9 @@
 
 // PIECES RANK
 #define BLACK_Y 8
-#define WHITE_Y 1
-
-// PAWN RANK
-#define WPAWNY 2
 #define BPAWNY 7
+#define WHITE_Y 1
+#define WPAWNY 2
 
 // IMAGE FORMAT
 #define SVG_WIDTH 45
