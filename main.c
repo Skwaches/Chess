@@ -1,103 +1,169 @@
-#include <stdio.h>
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_mouse.h>
 #include <SDL3_image/SDL_image.h>
-#include <stdbool.h>
 #include "constants.h"
 #include "classes.h"
 #include "funcs.h"
 
 #pragma region Globals
-bool leftmouseHeld = false;
-bool leftclick = false;
+// Frame measurements
 
-bool running = false;
+int starttime = 0;
+float totaltime = 0;
+int frames = 0;
+float fps = 0;
 
-Piece *selected = NULL;
+// DELETE THIS
+void clearTerminal(int num)
+{
+    for (int k = 0; k < num; k++)
+    {
+        SDL_Log("\n");
+    }
+}
+
+bool leftMouseHeld = false;
+bool leftMouseRelease = false;
+bool leftMouseclick = false;
+
+bool successfulLaunch = true;
+bool running = true;
+
+bool player = true; // WHITE :D
+
+PieceNode **playerPieces = NULL;
+PieceNode **opponentPieces = NULL;
+
+Piece playerPiece = {NULL, -1};
+Piece opponentPiece = {NULL, -1};
+
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 
-tileNode *headLightTile = NULL;
+TileNode *headLightTile = NULL;
 
-pieceNode *blackHeadPiece = NULL;
-pieceNode *whiteHeadPiece = NULL;
+PieceNode *blackHeadPiece = NULL;
+PieceNode *whiteHeadPiece = NULL;
 
-coords *mousetile = NULL;
 SDL_FPoint *mousepos = NULL;
 
 #pragma endregion Globals
 
 // FUNCTIONS
-void initialise_window()
+
+// Returns Current FPS Since Launch
+void getFPS(void)
+{
+    static Uint32 starttime = 0;
+    static int frames = 0;
+
+    if (starttime == 0)
+    {
+        starttime = SDL_GetTicks();
+        return;
+    }
+
+    frames++;
+    Uint32 current = SDL_GetTicks();
+    double elapsed = (current - starttime) / 1000.0;
+
+    if (elapsed >= 1.0)
+    {
+        fps = frames / elapsed;
+        frames = 0;
+        starttime = current;
+    }
+}
+
+void accident()
+{
+    successfulLaunch = false;
+    running = false;
+    SDL_Log("Something went wrong :%s\n", SDL_GetError());
+}
+
+void launch()
 {
     if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
     {
-        running = false;
+        accident();
+        return;
+    }
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO))
+    {
+        accident();
         return;
     }
 
     window = SDL_CreateWindow("CHESS", SCREENWIDTH, SCREENHEIGHT, SDL_WINDOW_BORDERLESS);
     if (window == NULL)
     {
-        fprintf(stderr, "Window FAIL");
+        accident();
         return;
     }
     renderer = SDL_CreateRenderer(window, NULL);
     if (renderer == NULL)
     {
-        fprintf(stderr, "Renderer FAIL");
+        SDL_DestroyWindow(window);
+        accident();
         return;
     }
-    running = true;
+
     return;
 }
 
-void accident()
+// CLEANING FUNCTIONS
+void launchClean()
 {
-    running = false;
-
-    printf("Something went wrong :%s\n", SDL_GetError());
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    accident();
+}
+void clean_tile()
+{
+    launchClean();
+    SDL_free(mousepos);
+    accident();
+}
+void clean_pieces()
+{
+    clean_tile();
+    freeTileNodes(headLightTile);
+    accident();
 }
 
 void setup(void)
 {
 #pragma region mouse
-    mousetile = SDL_malloc(sizeof(coords));
-    if (mousetile == NULL)
+
+    mousepos = SDL_malloc(sizeof(SDL_FPoint));
+    if (mousepos == NULL)
     {
-        accident();
-        fprintf(stderr, "Mouse Tile\n");
+        launchClean();
         return;
     }
-    mousepos = SDL_malloc(sizeof(SDL_FPoint *));
 
 #pragma endregion mouseSpace
 
-#pragma region Board
+#pragma region LightTiles
     int maxTileX = SCREENWIDTH - TILE_WIDTH;
     int maxTileY = SCREENHEIGHT - TILE_HEIGHT;
     int start_X = 0;
     int start_Y = 0;
-    tileNode *tempTile;
-    size_t tileNode_size = sizeof(tileNode);
+    TileNode *tempTile;
+    size_t tileNode_size = sizeof(TileNode);
     bool offset;
-
-#pragma region LightTiles
     headLightTile = SDL_malloc(tileNode_size);
     if (headLightTile == NULL)
     {
+        clean_tile();
         accident();
-        fprintf(stderr, "headLightTile");
         return;
     }
     tempTile = headLightTile;
     offset = false;
     for (int y = start_Y; y <= maxTileY; y += TILE_HEIGHT)
     {
-        if (tempTile == NULL)
-        {
-            break;
-        }
+
         if (offset)
         {
             start_X = TILE_WIDTH;
@@ -112,7 +178,7 @@ void setup(void)
         {
             SDL_FRect temp_rect = {x, y, TILE_WIDTH, TILE_HEIGHT};
             tempTile->rect = temp_rect;
-            tempTile->pos = (coords){(int)x / TILE_WIDTH + 1, 8 - (int)y / TILE_HEIGHT};
+            tempTile->pos = (Tile){(int)x / TILE_WIDTH + 1, 8 - (int)y / TILE_HEIGHT};
             ;
             if (y + TILE_HEIGHT > maxTileY && x + 2 * TILE_WIDTH > maxTileX)
             {
@@ -123,8 +189,8 @@ void setup(void)
             tempTile->next = SDL_malloc(tileNode_size);
             if (tempTile->next == NULL)
             {
-                accident();
-                fprintf(stderr, "tempTile-Light");
+                clean_tile();
+                freeTileNodes(headLightTile);
                 return;
             }
             tempTile = tempTile->next;
@@ -132,65 +198,78 @@ void setup(void)
     }
 #pragma endregion LightTiles
 
-#pragma endregion Board
+    // ASSETS
+    char buffer[MAX_ASSET_PATH];
+    int itemcount = 0;
 
 #pragma region Pieces
     char **pieces = NULL;
-    int piece_no = 0;
-    char buffer[MAX_ASSET_PATH];
-    pieceNode *tempPiece;
-    pieceNode *prevPiece = NULL;
+
+    PieceNode *tempPiece;
+    PieceNode *prevPiece = NULL;
+
 #pragma region BLACK
-    blackHeadPiece = SDL_malloc(sizeof(pieceNode));
+    blackHeadPiece = SDL_malloc(sizeof(PieceNode));
     if (blackHeadPiece == NULL)
     {
-        accident();
-        fprintf(stderr, "blackHeadPiece");
+        clean_pieces();
         return;
     }
-    size_t pieceNodeSize = sizeof(pieceNode);
+    size_t pieceNodeSize = sizeof(PieceNode);
     tempPiece = blackHeadPiece;
-    pieces = SDL_GlobDirectory(BLACK_PIECES_PATH, "*.svg", 0, &piece_no);
+
+    // BASE VALUES FOR FAILURE
+    tempPiece->next = NULL;
+    tempPiece->prev = prevPiece;
+    tempPiece->appearances = 1;
+    tempPiece->texture = NULL;
+
+    pieces = SDL_GlobDirectory(BLACK_PIECES_PATH, NULL, 0, &itemcount);
     if (pieces == NULL)
     {
-        accident();
-        fprintf(stderr, "Black Pieces\n");
+        SDL_free(blackHeadPiece);
+        clean_pieces();
         return;
     }
 
-    for (int i = 0; i < piece_no; i++)
+    for (int i = 0; i < itemcount; i++)
     {
         SDL_snprintf(buffer, sizeof(buffer), "%s/%s", BLACK_PIECES_PATH, pieces[i]);
         if (SDL_strcmp(pieces[i], BISHOP_FILE_NAME) == 0)
         {
             if (makePieceNode(renderer, buffer, tempPiece, BISHOP_NO, BISHOP_NAME, BISHOP_X, BLACK_Y) == NULL)
             {
-                accident();
-                fprintf(stderr, BISHOP_FILE_NAME);
+                clean_pieces();
+                SDL_free(pieces);
+                freePieces(blackHeadPiece);
             };
         }
         else if (SDL_strcmp(pieces[i], KING_FILE_NAME) == 0)
         {
             if (makePieceNode(renderer, buffer, tempPiece, KING_NO, KING_NAME, KING_X, BLACK_Y) == NULL)
             {
-                accident();
-                fprintf(stderr, KING_FILE_NAME);
+                clean_pieces();
+                SDL_free(pieces);
+                freePieces(blackHeadPiece);
             }
         }
         else if (SDL_strcmp(pieces[i], KNIGHT_FILE_NAME) == 0)
         {
-            if (makePieceNode(renderer, buffer, tempPiece, KNIGHT_NO, KNIGHT_NAME, KNIGHT_X, BLACK_Y) == NULL)
+            if (makePieceNode(renderer, buffer, tempPiece, KNIGHT_NO,
+                              KNIGHT_NAME, KNIGHT_X, BLACK_Y) == NULL)
             {
-                accident();
-                fprintf(stderr, KNIGHT_FILE_NAME);
+                clean_pieces();
+                SDL_free(pieces);
+                freePieces(blackHeadPiece);
             }
         }
         else if (SDL_strcmp(pieces[i], PAWN_FILE_NAME) == 0)
         {
             if (makePieceNode(renderer, buffer, tempPiece, PAWN_NO, PAWN_NAME, PAWN_X, BPAWNY) == NULL)
             {
-                accident();
-                fprintf(stderr, PAWN_FILE_NAME);
+                clean_pieces();
+                SDL_free(pieces);
+                freePieces(blackHeadPiece);
             }
         }
         else if (SDL_strcmp(pieces[i], QUEEN_FILE_NAME) == 0)
@@ -198,16 +277,18 @@ void setup(void)
 
             if (makePieceNode(renderer, buffer, tempPiece, QUEEN_NO, QUEEN_NAME, QUEEN_X, BLACK_Y) == NULL)
             {
-                accident();
-                fprintf(stderr, QUEEN_FILE_NAME);
+                clean_pieces();
+                SDL_free(pieces);
+                freePieces(blackHeadPiece);
             }
         }
         else if (SDL_strcmp(pieces[i], ROOK_FILE_NAME) == 0)
         {
             if (makePieceNode(renderer, buffer, tempPiece, ROOK_NO, ROOK_NAME, ROOK_X, BLACK_Y) == NULL)
             {
-                accident();
-                fprintf(stderr, BISHOP_FILE_NAME);
+                clean_pieces();
+                SDL_free(pieces);
+                freePieces(blackHeadPiece);
             }
         }
         else
@@ -219,69 +300,89 @@ void setup(void)
         tempPiece->prev = prevPiece;
         prevPiece = tempPiece;
         // Next Piece?
-        if (i == piece_no - 1)
+        if (i == itemcount - 1)
         {
-
+            SDL_free(pieces);
             tempPiece->next = NULL;
             break;
         }
 
         tempPiece->next = SDL_malloc(pieceNodeSize);
+        if (tempPiece->next == NULL)
+        {
+            clean_pieces();
+            SDL_free(pieces);
+            freePieces(blackHeadPiece);
+            return;
+        }
         tempPiece = tempPiece->next;
     }
+
 #pragma endregion BLACK
 
 #pragma region WHITE
-    whiteHeadPiece = SDL_malloc(sizeof(pieceNode));
+    whiteHeadPiece = SDL_malloc(sizeof(PieceNode));
     prevPiece = NULL;
     if (whiteHeadPiece == NULL)
     {
-        accident();
-        fprintf(stderr, "whiteHeadPiece\n");
+        clean_pieces();
+        freePieces(blackHeadPiece);
         return;
     }
 
     tempPiece = whiteHeadPiece;
-    pieces = SDL_GlobDirectory(WHITE_PIECES_PATH, "*.svg", 0, &piece_no);
+
+    // BASE VALUES FOR FAILURE
+    tempPiece->next = NULL;
+    tempPiece->prev = prevPiece;
+    tempPiece->appearances = 1;
+    tempPiece->texture = NULL;
+
+    pieces = SDL_GlobDirectory(WHITE_PIECES_PATH, NULL, 0, &itemcount);
     if (pieces == NULL)
     {
-        accident();
-        fprintf(stderr, "White Pieces\n");
+        clean_pieces();
+        freePieces(blackHeadPiece);
+        SDL_free(whiteHeadPiece);
         return;
     }
-    for (int i = 0; i < piece_no; i++)
+    for (int i = 0; i < itemcount; i++)
     {
         SDL_snprintf(buffer, sizeof(buffer), "%s/%s", WHITE_PIECES_PATH, pieces[i]);
         if (SDL_strcmp(pieces[i], BISHOP_FILE_NAME) == 0)
         {
             if (makePieceNode(renderer, buffer, tempPiece, BISHOP_NO, BISHOP_NAME, BISHOP_X, WHITE_Y) == NULL)
             {
-                accident();
-                fprintf(stderr, BISHOP_FILE_NAME);
+                clean_pieces();
+                freePieces(blackHeadPiece);
+                freePieces(whiteHeadPiece);
             };
         }
         else if (SDL_strcmp(pieces[i], KING_FILE_NAME) == 0)
         {
             if (makePieceNode(renderer, buffer, tempPiece, KING_NO, KING_NAME, KING_X, WHITE_Y) == NULL)
             {
-                accident();
-                fprintf(stderr, KING_FILE_NAME);
+                clean_pieces();
+                freePieces(blackHeadPiece);
+                freePieces(whiteHeadPiece);
             }
         }
         else if (SDL_strcmp(pieces[i], KNIGHT_FILE_NAME) == 0)
         {
             if (makePieceNode(renderer, buffer, tempPiece, KNIGHT_NO, KNIGHT_NAME, KNIGHT_X, WHITE_Y) == NULL)
             {
-                accident();
-                fprintf(stderr, KNIGHT_FILE_NAME);
+                clean_pieces();
+                freePieces(blackHeadPiece);
+                freePieces(whiteHeadPiece);
             }
         }
         else if (SDL_strcmp(pieces[i], PAWN_FILE_NAME) == 0)
         {
             if (makePieceNode(renderer, buffer, tempPiece, PAWN_NO, PAWN_NAME, PAWN_X, WPAWNY) == NULL)
             {
-                accident();
-                fprintf(stderr, PAWN_FILE_NAME);
+                clean_pieces();
+                freePieces(blackHeadPiece);
+                freePieces(whiteHeadPiece);
             }
         }
         else if (SDL_strcmp(pieces[i], QUEEN_FILE_NAME) == 0)
@@ -289,16 +390,18 @@ void setup(void)
 
             if (makePieceNode(renderer, buffer, tempPiece, QUEEN_NO, QUEEN_NAME, QUEEN_X, WHITE_Y) == NULL)
             {
-                accident();
-                fprintf(stderr, QUEEN_FILE_NAME);
+                clean_pieces();
+                freePieces(blackHeadPiece);
+                freePieces(whiteHeadPiece);
             }
         }
         else if (SDL_strcmp(pieces[i], ROOK_FILE_NAME) == 0)
         {
             if (makePieceNode(renderer, buffer, tempPiece, ROOK_NO, ROOK_NAME, ROOK_X, WHITE_Y) == NULL)
             {
-                accident();
-                fprintf(stderr, ROOK_FILE_NAME);
+                clean_pieces();
+                freePieces(blackHeadPiece);
+                freePieces(whiteHeadPiece);
             }
         }
         else
@@ -310,56 +413,63 @@ void setup(void)
         tempPiece->prev = prevPiece;
         prevPiece = tempPiece;
         // Next Piece?
-        if (i == piece_no - 1)
+        if (i == itemcount - 1)
         {
-
+            SDL_free(pieces);
             tempPiece->next = NULL;
             break;
         }
 
         tempPiece->next = SDL_malloc(pieceNodeSize);
+        if (tempPiece->next == NULL)
+        {
+            SDL_free(pieces);
+            freePieces(blackHeadPiece);
+            freePieces(whiteHeadPiece);
+            clean_pieces();
+            return;
+        }
         tempPiece = tempPiece->next;
     }
 
 #pragma endregion WHITE
 
 #pragma endregion Pieces
+
+    // #pragma Audio
+
+    //     char **songs = NULL;
+    //     char **music = NULL;
+
+    //     songs = SDL_GlobDirectory(MUSIC_PATH, "*.mp3", NULL, &itemcount);
+    //     SDL_Free(songs);
 }
 
 void process_input(void)
 {
-
-    // Cursor Position
-    SDL_GetMouseState(&mousepos->x, &mousepos->y);
-    mousetile->x = mousepos->x / TILE_WIDTH + 1;
-    mousetile->y = 8 - mousepos->y / TILE_HEIGHT;
-
-    leftclick = false;
+    leftMouseRelease = false;
+    leftMouseclick = false;
 
     SDL_Event event;
     SDL_PollEvent(&event);
     switch (event.type)
     {
-
     case SDL_EVENT_QUIT:
-        SDL_Quit();
         running = false;
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
         if (event.button.button == 1)
         {
-            leftmouseHeld = true;
-            selected = pieceFromPos(mousepos, blackHeadPiece);
+            leftMouseclick = true;
+            leftMouseHeld = true;
         }
 
         break;
     case SDL_EVENT_MOUSE_BUTTON_UP:
         if (event.button.button == 1)
         {
-            leftmouseHeld = false;
-            SDL_free(selected);
-            selected = NULL;
-            leftclick = true;
+            leftMouseHeld = false;
+            leftMouseRelease = true;
         }
         break;
 
@@ -370,13 +480,84 @@ void process_input(void)
 
 void update(void)
 {
-    // FPS
-    SDL_Delay(WAIT_TIME);
-
-    // UPDATE
-    if (selected)
+    // // FPS
+    getFPS(); // frames stored in fps variable
+    if (fps < 500 && SDL_GetTicks() > 2000)
     {
-        selected->ptr->rect[selected->index] = rectFromPos(mousepos);
+        SDL_Log("%f fps? You're pc's chopped lil' bro...\n", fps);
+        clearTerminal(44);
+    }
+    if (LIMIT_FPS)
+    {
+        SDL_Delay(WAIT_TIME);
+    }
+
+    // UPDATES
+    // Cursor Position
+    SDL_GetMouseState(&mousepos->x, &mousepos->y);
+
+    // Set up for player
+    if (player)
+    {
+        playerPieces = &whiteHeadPiece;
+        opponentPieces = &blackHeadPiece;
+    }
+    else
+    {
+        playerPieces = &blackHeadPiece;
+        opponentPieces = &whiteHeadPiece;
+    }
+
+    if (leftMouseclick)
+    {
+        playerPiece = pieceFromPos(*playerPieces, mousepos);
+        opponentPiece = pieceFromPos(*opponentPieces, mousepos); // COUNTS AS INVALID MOVE.
+    }
+
+    // Player
+    if (playerPiece.ptr != NULL)
+    {
+        // TRACKMOUSE
+        if (leftMouseHeld)
+        {
+            trackMouse(playerPiece, mousepos);
+        }
+
+        // MAKE MOVE
+        if (leftMouseRelease)
+        {
+            // VALID MOVE
+            int result = validateMove(playerPiece, mousepos, player, *playerPieces, *opponentPieces);
+            if (result) // Valid no capture
+            {
+
+                if (result == 2)
+                {
+                    Tile mouseTile = TileFromPos(mousepos);
+                    deletePiece(pieceFromTile(mouseTile, *opponentPieces), opponentPieces);
+                }
+                movePiece(playerPiece, mousepos);
+                player = !player;
+            }
+
+            // INVALID MOVE
+            else // Invalid
+            {
+                untrackMouse(playerPiece);
+            }
+        }
+    }
+    // Opponent -> For fidgeting when it's not your turn :D
+    else if (opponentPiece.ptr != NULL)
+    {
+        if (leftMouseHeld)
+        {
+            trackMouse(opponentPiece, mousepos);
+        }
+        if (leftMouseRelease)
+        {
+            untrackMouse(opponentPiece);
+        }
     }
 }
 
@@ -388,7 +569,7 @@ void render(void)
 
     // LIGHT TILES
     SDL_SetRenderDrawColor(renderer, 10, 150, 150, 255);
-    renderTiles(renderer, headLightTile);
+    renderTileNodes(renderer, headLightTile);
     renderPieces(renderer, blackHeadPiece);
     renderPieces(renderer, whiteHeadPiece);
 
@@ -398,8 +579,7 @@ void render(void)
 void clean(void)
 {
     freePieces(blackHeadPiece);
-    freeTiles(headLightTile);
-    SDL_free(mousetile);
+    freeTileNodes(headLightTile);
     SDL_free(mousepos);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
@@ -409,7 +589,7 @@ void clean(void)
 // MAIN
 int main()
 {
-    initialise_window();
+    launch();
     if (running)
     {
         setup();
@@ -422,6 +602,10 @@ int main()
         update();
         render();
     }
-    clean();
+
+    if (successfulLaunch)
+    {
+        clean();
+    };
     return 0;
 }

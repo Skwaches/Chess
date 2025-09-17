@@ -2,33 +2,34 @@
 #define CLASSES_H
 
 #include <SDL3/SDL.h>
-typedef struct coords
+typedef struct Tile
 {
     int x;
     int y;
-} coords;
+} Tile;
 
-typedef struct tileNode
+typedef struct TileNode
 {
-    coords pos;
+    Tile pos;
     SDL_FRect rect;
-    struct tileNode *next;
-} tileNode;
+    struct TileNode *next;
+} TileNode;
 
-typedef struct pieceNode
+typedef struct PieceNode
 {
+    const char *type;
+    int noInPlay;
     int appearances;
-    char **name;
-    coords *pos;
+    Tile *pos;
     SDL_FRect *rect;
     SDL_Texture *texture;
-    struct pieceNode *prev;
-    struct pieceNode *next;
-} pieceNode;
+    struct PieceNode *prev;
+    struct PieceNode *next;
+} PieceNode;
 
 typedef struct Piece
 {
-    pieceNode *ptr;
+    PieceNode *ptr;
     int index;
 } Piece;
 #endif
