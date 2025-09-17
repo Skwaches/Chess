@@ -11,7 +11,6 @@ int starttime = 0;
 float totaltime = 0;
 int frames = 0;
 float fps = 0;
-
 // DELETE THIS
 void clearTerminal(int num)
 {

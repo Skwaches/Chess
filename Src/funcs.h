@@ -26,7 +26,7 @@ void movePiece(Piece fake_PIECE, SDL_FPoint *pos);
 void deletePiece(Piece fakePiece, PieceNode **FakeFamily);
 
 Piece pieceFromTile(Tile dest, PieceNode *pieceFamily); // Checks against Piece coordinate.
-bool tileHasOccupant(Tile dest, PieceNode *pieceFamily);
+bool TileHasOccupant(Tile dest, PieceNode *pieceFamily);
 int validateMove(Piece test, SDL_FPoint *dest,
                  bool player /*True if white.*/,
                  PieceNode *playerFamily, PieceNode *enemyFamily);

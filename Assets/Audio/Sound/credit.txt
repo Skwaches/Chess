@@ -1,0 +1,3 @@
+https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/capture.mp3
+https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/move-self.mp3
+https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/castle.mp3
