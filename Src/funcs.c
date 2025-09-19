@@ -1,19 +1,32 @@
-#include <SDL3/SDL.h>
-#include <SDL3_image/SDL_image.h>
-#include <string.h>
-#include "funcs.h"
-#include "constants.h"
-#include "classes.h"
+#include "Linkers/funcs.h"
 
-SDL_Texture *maketexture(SDL_Renderer *renderer, char *path)
+SDL_Texture *maketexture(SDL_Renderer *renderer, const char *path)
 {
+
     SDL_IOStream *io = SDL_IOFromFile(path, "rb");
     if (io == NULL)
     {
         return NULL;
     }
+    if (IMG_isSVG(io) != 0)
+    {
+        SDL_Surface *surf = IMG_LoadSizedSVG_IO(io, (int)TILE_WIDTH, (int)TILE_HEIGHT);
+        if (surf == NULL)
+        {
+            SDL_CloseIO(io);
+            return NULL;
+        }
 
-    return IMG_LoadTexture_IO(renderer, io, true);
+        SDL_Texture *text = SDL_CreateTextureFromSurface(renderer, surf);
+        SDL_DestroySurface(surf);
+        SDL_CloseIO(io);
+        return text;
+    }
+    else
+    {
+        SDL_Texture *text = IMG_LoadTexture_IO(renderer, io, true);
+        return text;
+    }
 }
 
 Tile TileFromPos(SDL_FPoint *pos)
@@ -128,78 +141,6 @@ void renderTileNodes(SDL_Renderer *renderer, TileNode *HeadTile)
     {
         SDL_RenderFillRect(renderer, &TempTile->rect);
         TempTile = TempTile->next;
-    }
-}
-
-// Invalid returns i
-char chessX(int number)
-{
-    switch (number)
-    {
-    case 1:
-        return 'a';
-        break;
-    case 2:
-        return 'b';
-        break;
-    case 3:
-        return 'c';
-        break;
-    case 4:
-        return 'd';
-        break;
-    case 5:
-        return 'e';
-        break;
-    case 6:
-        return 'f';
-        break;
-    case 7:
-        return 'g';
-        break;
-    case 8:
-        return 'h';
-        break;
-
-    default:
-        return 'i';
-        break;
-    }
-}
-
-// Invalid returns 0
-int realX(char letter)
-{
-    switch (letter)
-    {
-    case 'a':
-        return 1;
-        break;
-    case 'b':
-        return 2;
-        break;
-    case 'c':
-        return 3;
-        break;
-    case 'd':
-        return 4;
-        break;
-    case 'e':
-        return 5;
-        break;
-    case 'f':
-        return 6;
-        break;
-    case 'g':
-        return 7;
-        break;
-    case 'h':
-        return 8;
-        break;
-
-    default:
-        return 0;
-        break;
     }
 }
 

@@ -1,9 +1,4 @@
-#include <SDL3/SDL.h>
-#include <SDL3_image/SDL_image.h>
-#include "constants.h"
-#include "classes.h"
-#include "funcs.h"
-
+#include "Linkers/funcs.h"
 #pragma region Globals
 // Frame measurements
 
@@ -11,14 +6,6 @@ int starttime = 0;
 float totaltime = 0;
 int frames = 0;
 float fps = 0;
-// DELETE THIS
-void clearTerminal(int num)
-{
-    for (int k = 0; k < num; k++)
-    {
-        SDL_Log("\n");
-    }
-}
 
 bool leftMouseHeld = false;
 bool leftMouseRelease = false;
@@ -45,6 +32,12 @@ PieceNode *whiteHeadPiece = NULL;
 
 SDL_FPoint *mousepos = NULL;
 
+char moveMadeWhite[40];
+char moveMadeBlack[40];
+
+// MIX_Mixer *myMixer;
+// MIX_Audio *captureSound;
+// MIX_Audio *moveSound;
 #pragma endregion Globals
 
 // FUNCTIONS
@@ -92,16 +85,34 @@ void launch()
         accident();
         return;
     }
+    if (!openDataBase())
+    {
+        closeDataBase();
+        accident();
+        return;
+    }
+    if (!createTable())
+    {
+        closeDataBase();
+        accident();
+        return;
+    }
+    if (!Init_Audio())
+    {
+        accident();
+    }
 
     window = SDL_CreateWindow("CHESS", SCREENWIDTH, SCREENHEIGHT, SDL_WINDOW_BORDERLESS);
     if (window == NULL)
     {
+        closeDataBase();
         accident();
         return;
     }
     renderer = SDL_CreateRenderer(window, NULL);
     if (renderer == NULL)
     {
+        closeDataBase();
         SDL_DestroyWindow(window);
         accident();
         return;
@@ -111,24 +122,29 @@ void launch()
 }
 
 // CLEANING FUNCTIONS
+#pragma region Cleaning Functions for failed launch
 void launchClean()
 {
+    closeDataBase();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     accident();
 }
+
 void clean_tile()
 {
     launchClean();
     SDL_free(mousepos);
     accident();
 }
+
 void clean_pieces()
 {
     clean_tile();
     freeTileNodes(headLightTile);
     accident();
 }
+#pragma endregion
 
 void setup(void)
 {
@@ -434,14 +450,6 @@ void setup(void)
 #pragma endregion WHITE
 
 #pragma endregion Pieces
-
-    // #pragma Audio
-
-    //     char **songs = NULL;
-    //     char **music = NULL;
-
-    //     songs = SDL_GlobDirectory(MUSIC_PATH, "*.mp3", NULL, &itemcount);
-    //     SDL_Free(songs);
 }
 
 void process_input(void)
@@ -484,7 +492,6 @@ void update(void)
     if (fps < 500 && SDL_GetTicks() > 2000)
     {
         SDL_Log("%f fps? You're pc's chopped lil' bro...\n", fps);
-        clearTerminal(44);
     }
     if (LIMIT_FPS)
     {
@@ -501,6 +508,7 @@ void update(void)
         playerPieces = &whiteHeadPiece;
         opponentPieces = &blackHeadPiece;
     }
+
     else
     {
         playerPieces = &blackHeadPiece;
@@ -525,17 +533,39 @@ void update(void)
         // MAKE MOVE
         if (leftMouseRelease)
         {
-            // VALID MOVE
-            int result = validateMove(playerPiece, mousepos, player, *playerPieces, *opponentPieces);
-            if (result) // Valid no capture
-            {
 
-                if (result == 2)
+            int result = validateMove(playerPiece, mousepos, player, *playerPieces, *opponentPieces);
+
+            // VALID MOVE
+            if (result) // Valid
+            {
+                Tile mouseTile = TileFromPos(mousepos);
+                if (result == 2) // Capture
                 {
-                    Tile mouseTile = TileFromPos(mousepos);
+                    if (playCaptureSound())
+                    {
+                        SDL_Log("capture Sound played!\n");
+                    }
+
                     deletePiece(pieceFromTile(mouseTile, *opponentPieces), opponentPieces);
                 }
+                else
+                {
+                    if (playMoveSound())
+                    {
+                        SDL_Log("Move Sound Played!\n");
+                    }
+                }
                 movePiece(playerPiece, mousepos);
+                if (player)
+                {
+                    SDL_snprintf(moveMadeWhite, sizeof(moveMadeWhite), "%s to (%c%d)", playerPiece.ptr->type, chessX(mouseTile.x), mouseTile.y);
+                }
+                else
+                {
+                    SDL_snprintf(moveMadeBlack, sizeof(moveMadeBlack), "%s to (%c%d)", playerPiece.ptr->type, chessX(mouseTile.x), mouseTile.y);
+                    recordMove(moveMadeWhite, moveMadeBlack);
+                }
                 player = !player;
             }
 
@@ -577,11 +607,13 @@ void render(void)
 
 void clean(void)
 {
+    closeDataBase();
     freePieces(blackHeadPiece);
     freeTileNodes(headLightTile);
     SDL_free(mousepos);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
+    // MIX_Quit();
     SDL_Quit();
 }
 

@@ -1,7 +1,15 @@
 #ifndef FUNCS_H
 #define FUNCS_H
+
+// Link all other header files
 #include <SDL3/SDL.h>
+#include <SDL3_image/SDL_image.h>
+#include <SDL3_mixer/SDL_mixer.h>
+
 #include "classes.h"
+#include "constants.h"
+#include "movesSDK.h"
+#include "sounds.h"
 
 Tile TileFromPos(SDL_FPoint *pos);
 SDL_FRect rectFromTile(Tile cords);

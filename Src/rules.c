@@ -1,13 +1,11 @@
-#include <SDL3/SDL.h>
-#include "classes.h"
-#include "funcs.h"
-#include "constants.h"
+#include "Linkers/funcs.h"
 
-// GLOBALS
+// Take global values
 Piece test;
 bool playerBool; /*True if white.*/
 PieceNode *playerFamily;
 PieceNode *opponentFamily;
+
 Tile destTile, origTile;
 bool friendlyFire, capturing;
 int xVector, yVector, yDisplacement, xDisplacement;
@@ -88,14 +86,14 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
     // Move has to be within board (0-0)::::: DONE
     if (destTile.x > X_TILES || destTile.y > Y_TILES || destTile.y < 1)
     {
-        SDL_Log("Move is out Of range.\n");
+        // SDL_Log("Move is out Of range.\n");
         valid = false;
         return valid;
     }
 
     if (friendlyFire)
     {
-        SDL_Log("Friendly Fire is not Allowed!\n");
+        // SDL_Log("Friendly Fire is not Allowed!\n");
         valid = false;
         return valid;
     }
@@ -104,7 +102,7 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
     if (capturing)
         if (match_Piece(pieceFromTile(destTile, opponentFamily), KING_NAME))
         {
-            SDL_Log("Don't touch his highness!");
+            // SDL_Log("Don't touch his highness!");
             valid = false;
             return valid;
         }
@@ -131,7 +129,7 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
         {
             if (destTile.y != (playerBool ? OrigPawnY + 2 : OrigPawnY - 2))
             {
-                SDL_Log("Pawn can't move more than 2 spaces if not on the starting tile\n");
+                // SDL_Log("Pawn can't move more than 2 spaces if not on the starting tile\n");
                 valid = false;
                 return valid;
             }
@@ -139,7 +137,7 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
 
         if (yDisplacement < 0)
         {
-            SDL_Log("This little soldier must March Forward!\n");
+            // SDL_Log("This little soldier must March Forward!\n");
             valid = false;
             return valid;
         }
@@ -150,7 +148,7 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
             valid = checkSkip();
             if (!valid)
             {
-                SDL_Log("A pawn can't jump over pieces.\n");
+                // SDL_Log("A pawn can't jump over pieces.\n");
             }
         }
 
@@ -160,25 +158,25 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
             // validate possible moves.
             if (yDisplacement == 0)
             {
-                SDL_Log("A pawn can only move ahead or diagonally if capturing.\n");
+                // SDL_Log("A pawn can only move ahead or diagonally if capturing.\n");
                 valid = false;
                 return valid;
             }
             if (xDisplacement > 1)
             {
-                SDL_Log("A pawn can only move 1 diagonal away when capturing.\n");
+                // SDL_Log("A pawn can only move 1 diagonal away when capturing.\n");
                 valid = false;
                 return valid;
             }
             if (yDisplacement == 2)
             {
-                SDL_Log("A pawn can only move 1 diagonal away when capturing\n");
+                // SDL_Log("A pawn can only move 1 diagonal away when capturing\n");
                 valid = false;
                 return valid;
             }
             if (xDisplacement == 1 && !capturing)
             {
-                SDL_Log("A pawn can only move diagonally when capturing\n");
+                // SDL_Log("A pawn can only move diagonally when capturing\n");
                 valid = false;
                 return valid;
             }
@@ -189,7 +187,7 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
         // Can't capture in a straight line
         if (xDisplacement == 0 && capturing)
         {
-            SDL_Log("A pawn can only capture diagonally.\n");
+            // SDL_Log("A pawn can only capture diagonally.\n");
             valid = false;
             return valid;
         }
@@ -203,7 +201,7 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
         // 1 Move in any Direction.
         if (yDisplacement > 1 || xDisplacement > 1)
         {
-            SDL_Log("His majesty grumbles...\n");
+            // SDL_Log("His majesty grumbles...\n");
             valid = false;
             return valid;
         }
@@ -218,7 +216,7 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
         // Can't Jump Pieces
         if (xVector && yDisplacement)
         { // Straight paths
-            SDL_Log("Think more about straight lines maybe...\n");
+            // SDL_Log("Think more about straight lines maybe...\n");
             valid = false;
             return valid;
         }
@@ -230,7 +228,7 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
             valid = checkSkip();
             if (!valid)
             {
-                SDL_Log("A rook cannot jump pieces");
+                // SDL_Log("A rook cannot jump pieces");
                 return valid;
             }
         }
@@ -243,7 +241,7 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
         // Diagonal Movement
         if (xDisplacement != yDisplacement)
         {
-            SDL_Log("Bishops can only move diagonally");
+            // SDL_Log("Bishops can only move diagonally");
             valid = false;
             return valid;
         }
@@ -254,7 +252,7 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
             valid = checkSkip();
             if (!valid)
             {
-                SDL_Log("A Bishop can't jump pieces.\n");
+                // SDL_Log("A Bishop can't jump pieces.\n");
                 return valid;
             }
         }
@@ -267,14 +265,14 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
         if (xDisplacement != 1 && yDisplacement != 1)
         {
             valid = false;
-            SDL_Log("A knight can only move in an L-shape");
+            // SDL_Log("A knight can only move in an L-shape");
             return valid;
         }
         if ((xDisplacement == 1 && yDisplacement != 2) ||
             (yDisplacement == 1 && xDisplacement != 2))
         {
             valid = false;
-            SDL_Log("A knight can only move in an L-shape");
+            // SDL_Log("A knight can only move in an L-shape");
             return valid;
         }
         return valid + capturing;
@@ -288,7 +286,7 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
             valid = checkSkip();
             if (!valid)
             {
-                SDL_Log("A queen can't jump pieces");
+                // SDL_Log("A queen can't jump pieces");
                 return valid;
             }
         }
@@ -296,7 +294,7 @@ int validateMove(Piece global_piece, SDL_FPoint *global_dest,
             (xDisplacement != 0 && yDisplacement != 0))
         {
             valid = false;
-            SDL_Log("A quenn can only move in a straight or diagonal path.\n");
+            // SDL_Log("A quenn can only move in a straight or diagonal path.\n");
         }
         return valid + capturing;
     }

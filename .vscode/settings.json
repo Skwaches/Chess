@@ -57,5 +57,15 @@
         "spwn": "spwn build",
         "pkl": "cd $dir && pkl eval -f yaml $fileName -o $fileNameWithoutExt.yaml",
         "gleam": "gleam run -m $fileNameWithoutExt"
+    },
+    "files.associations": {
+        "funcs.h": "c",
+        "classes.h": "c",
+        "constants.h": "c",
+        "movessdk.h": "c",
+        "sqlite3.h": "c",
+        "sdl_image.h": "c",
+        "sdl_mixer.h": "c",
+        "sounds.h": "c"
     }
 }
