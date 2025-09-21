@@ -30,13 +30,15 @@ Piece pieceFromPos(PieceNode *HeadPiece, SDL_FPoint *pos); // Checks against Pie
 SDL_FRect centerRectAroundPos(SDL_FPoint *pos);
 void trackMouse(Piece fake_PIECE, SDL_FPoint *mouse_pos);
 void untrackMouse(Piece fake_PIECE);
-void movePiece(Piece fake_PIECE, SDL_FPoint *pos);
+void movePiece(Piece fakePIECE, Tile destCoordinates);
+void movePieceFromPos(Piece fake_PIECE, SDL_FPoint *pos);
 void deletePiece(Piece fakePiece, PieceNode **FakeFamily);
 
 Piece pieceFromTile(Tile dest, PieceNode *pieceFamily); // Checks against Piece coordinate.
 bool TileHasOccupant(Tile dest, PieceNode *pieceFamily);
-int validateMove(Piece test, SDL_FPoint *dest,
-                 bool player /*True if white.*/,
-                 PieceNode *playerFamily, PieceNode *enemyFamily);
-
+bool init_Locals(Piece global_piece, Tile global_dest,
+                 bool global_player /*True if white.*/,
+                 PieceNode *global_playerFamily, PieceNode *global_opponentFamily);
+int moveCalculations();
+void setCheck();
 #endif

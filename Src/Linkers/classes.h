@@ -18,7 +18,6 @@ typedef struct TileNode
 typedef struct PieceNode
 {
     const char *type;
-    int noInPlay;
     int appearances;
     Tile *pos;
     SDL_FRect *rect;
@@ -32,4 +31,11 @@ typedef struct Piece
     PieceNode *ptr;
     int index;
 } Piece;
+
+typedef struct CastlingOptions
+{
+    bool queenside;
+    bool kingside;
+} CastlingOptions;
+
 #endif

@@ -28,14 +28,14 @@ bool openDataBase(void)
     }
     sqlite3_finalize(statement);
 
-    SDL_Log("DataBase Opened");
+    // SDL_Log("DataBase Opened");
     return true;
 }
 
 void closeDataBase(void)
 {
     sqlite3_close(DATABASE);
-    SDL_Log("DataBase Closed");
+    // SDL_Log("DataBase Closed");
     DATABASE = NULL; // AVOID HANGING POINTERS;
 }
 
@@ -69,7 +69,7 @@ bool recordMove(const char *moveWhite, const char *moveBlack)
 
     // Bind Value
     sqlite3_bind_text(statement, 1, moveWhite, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 2, moveBlack, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 2, moveBlack, -1, SQLITE_TRANSIENT);
     // Execute
     if (sqlite3_step(statement) != SQLITE_DONE)
     {
@@ -77,7 +77,7 @@ bool recordMove(const char *moveWhite, const char *moveBlack)
         sqlite3_finalize(statement);
         return false;
     }
-    SDL_Log("Move recorded: %s, %s", moveWhite, moveBlack);
+    // SDL_Log("Move recorded: %s, %s", moveWhite, moveBlack);
     sqlite3_finalize(statement);
     return true;
 }

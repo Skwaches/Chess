@@ -50,7 +50,7 @@ PieceNode *makePieceNode(SDL_Renderer *renderer,
                          const int *x,
                          const int y)
 {
-    tempPiece->noInPlay = appearances;
+    // tempPiece->noInPlay = appearances;
     tempPiece->appearances = appearances;
     tempPiece->type = name;
     Tile *positions = SDL_malloc(appearances * sizeof(Tile));
@@ -172,22 +172,37 @@ SDL_FRect centerRectAroundPos(SDL_FPoint *pos)
     return (SDL_FRect){pos->x - TILE_WIDTH / 2, pos->y - TILE_HEIGHT / 2, TILE_WIDTH, TILE_WIDTH};
 }
 
+//  Since a Piece is drawn on its rect value.
+//  The rect is set to a rect built around the mouse position.
+//  Piece position is not altered.
+// This is because it is used to reset the rect if a move is not made.
 void trackMouse(Piece fakePIECE, SDL_FPoint *mouse_pos)
 {
     fakePIECE.ptr->rect[fakePIECE.index] = centerRectAroundPos(mouse_pos);
 }
 
+// Rebuilds the rect of the piece from the position.
 void untrackMouse(Piece fakePIECE)
 {
     fakePIECE.ptr->rect[fakePIECE.index] = rectFromTile(fakePIECE.ptr->pos[fakePIECE.index]);
 }
 
-void movePiece(Piece fakePIECE, SDL_FPoint *pos)
+// Changes Piece pos to destination.
+// Rebuilds Piece rect from Position.
+void movePiece(Piece fakePIECE, Tile destCoordinates)
 {
-    fakePIECE.ptr->pos[fakePIECE.index] = TileFromPos(pos);
+    fakePIECE.ptr->pos[fakePIECE.index] = destCoordinates;
     untrackMouse(fakePIECE);
 }
 
+// Wrapper on MovePiece Function
+// Takes a SDL_FPoint instead of a Tile
+void movePieceFromPos(Piece fakePIECE, SDL_FPoint *pos)
+{
+    movePiece(fakePIECE, TileFromPos(pos));
+}
+
+// Make these linked lists to make this easier;;;
 void deletePiece(Piece fakePiece, PieceNode **FakeFamily)
 {
     if (fakePiece.ptr == NULL)
@@ -196,16 +211,17 @@ void deletePiece(Piece fakePiece, PieceNode **FakeFamily)
     }
     int index = fakePiece.index;
     PieceNode *fakeNode = fakePiece.ptr;
+
     // Shift all pieces after index left by one
     for (int i = index; i < fakeNode->appearances - 1; i++)
     {
         fakeNode->pos[i] = fakeNode->pos[i + 1];
         fakeNode->rect[i] = fakeNode->rect[i + 1];
     }
-    fakeNode->noInPlay--;
+    // fakeNode->noInPlay--;
     fakeNode->appearances--;
     // Reallocate arrays to new size if not empty
-    if (fakeNode->noInPlay > 0)
+    if (fakeNode->appearances > 0)
     {
         Tile *newPos = SDL_realloc(fakeNode->pos, sizeof(Tile) * fakeNode->appearances);
         SDL_FRect *newRect = SDL_realloc(fakeNode->rect, sizeof(SDL_FRect) * fakeNode->appearances);

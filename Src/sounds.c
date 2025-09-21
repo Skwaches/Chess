@@ -111,7 +111,7 @@ bool Init_Audio(void)
             }
         }
     }
-    SDL_Log("Sounds Loaded!\n");
+    // SDL_Log("Sounds Loaded!\n");
     return true;
 }
 
@@ -131,18 +131,31 @@ bool playSound(MIX_Audio *sound)
     return true;
 }
 
-// WRAPPERS ON playSOUND
-bool playMoveSound(void)
+// Wrapper on playSound function:
+// Returns true for successful play
+void playMoveSound(void)
 {
-    return playSound(moveAudio);
+    if (!playSound(moveAudio))
+    {
+        SDL_Log("Something is wrong with the Move sound\n");
+    }
+    return;
 }
-bool playCaptureSound(void)
+void playCaptureSound(void)
 {
-    return playSound(captureAudio);
+    if (!playSound(captureAudio))
+    {
+        SDL_Log("Something is wrong with the Capture sound\n");
+    }
+    return;
 }
-bool playCastleSound(void)
+void playCastleSound(void)
 {
-    return playSound(castleAudio);
+    if (!playSound(castleAudio))
+    {
+        SDL_Log("Something is wrong with the Castle sound\n");
+    }
+    return;
 }
 
 // Easy clean up;

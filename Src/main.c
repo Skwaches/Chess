@@ -508,13 +508,13 @@ void update(void)
         playerPieces = &whiteHeadPiece;
         opponentPieces = &blackHeadPiece;
     }
-
     else
     {
         playerPieces = &blackHeadPiece;
         opponentPieces = &whiteHeadPiece;
     }
 
+    // Select piece
     if (leftMouseclick)
     {
         playerPiece = pieceFromPos(*playerPieces, mousepos);
@@ -534,29 +534,51 @@ void update(void)
         if (leftMouseRelease)
         {
 
-            int result = validateMove(playerPiece, mousepos, player, *playerPieces, *opponentPieces);
+            Tile mouseTile = TileFromPos(mousepos);
+            if (!init_Locals(playerPiece, mouseTile, player, *playerPieces, *opponentPieces))
+                SDL_Log("Houston, we have a problem...");
+
+            int result = moveCalculations();
 
             // VALID MOVE
-            if (result) // Valid
-            {
-                Tile mouseTile = TileFromPos(mousepos);
-                if (result == 2) // Capture
-                {
-                    if (playCaptureSound())
-                    {
-                        SDL_Log("capture Sound played!\n");
-                    }
+            int yValueOfPiece = player ? WHITE_Y : BLACK_Y; // For Castling
 
-                    deletePiece(pieceFromTile(mouseTile, *opponentPieces), opponentPieces);
-                }
-                else
-                {
-                    if (playMoveSound())
-                    {
-                        SDL_Log("Move Sound Played!\n");
-                    }
-                }
-                movePiece(playerPiece, mousepos);
+            switch (result)
+            {
+            case 0: // Invalid move
+                untrackMouse(playerPiece);
+                break;
+
+            case 1: // Move no capture
+                movePieceFromPos(playerPiece, mousepos);
+                playMoveSound();
+                break;
+
+            case 2: // Move + capture
+                playCaptureSound();
+                deletePiece(pieceFromTile(mouseTile, *opponentPieces), opponentPieces);
+                movePieceFromPos(playerPiece, mousepos);
+                break;
+            case 3: // Castle KingSide
+                playCastleSound();
+                movePieceFromPos(playerPiece, mousepos);
+                movePiece(pieceFromTile((Tile){ROOK_X[1], yValueOfPiece}, *playerPieces), (Tile){6, yValueOfPiece});
+                break;
+            case 4: // Castle QueenSide
+                playCastleSound();
+                movePieceFromPos(playerPiece, mousepos);
+                movePiece(pieceFromTile((Tile){ROOK_X[0], yValueOfPiece}, *playerPieces), (Tile){4, yValueOfPiece});
+                break;
+            default:
+                SDL_Log("That move has not been set up yet\n");
+                break;
+            }
+
+            if (result)
+            {
+                setCheck();
+                player = !player;
+                // RECORDING MOVE
                 if (player)
                 {
                     SDL_snprintf(moveMadeWhite, sizeof(moveMadeWhite), "%s to (%c%d)", playerPiece.ptr->type, chessX(mouseTile.x), mouseTile.y);
@@ -566,16 +588,10 @@ void update(void)
                     SDL_snprintf(moveMadeBlack, sizeof(moveMadeBlack), "%s to (%c%d)", playerPiece.ptr->type, chessX(mouseTile.x), mouseTile.y);
                     recordMove(moveMadeWhite, moveMadeBlack);
                 }
-                player = !player;
-            }
-
-            // INVALID MOVE
-            else // Invalid
-            {
-                untrackMouse(playerPiece);
             }
         }
     }
+
     // Opponent -> For fidgeting when it's not your turn :D
     else if (opponentPiece.ptr != NULL)
     {
