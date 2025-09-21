@@ -102,7 +102,7 @@ void launch()
         accident();
     }
 
-    window = SDL_CreateWindow("CHESS", SCREENWIDTH, SCREENHEIGHT, SDL_WINDOW_BORDERLESS);
+    window = SDL_CreateWindow("CHESS", SCREENWIDTH, SCREENHEIGHT, SDL_WINDOW_RESIZABLE);
     if (window == NULL)
     {
         closeDataBase();
@@ -535,10 +535,9 @@ void update(void)
         {
 
             Tile mouseTile = TileFromPos(mousepos);
-            if (!init_Locals(playerPiece, mouseTile, player, *playerPieces, *opponentPieces))
-                SDL_Log("Houston, we have a problem...");
 
-            int result = moveCalculations();
+            initMove(playerPiece, mouseTile, player, *playerPieces, *opponentPieces);
+            int result = finalizeMove();
 
             // VALID MOVE
             int yValueOfPiece = player ? WHITE_Y : BLACK_Y; // For Castling
@@ -550,8 +549,9 @@ void update(void)
                 break;
 
             case 1: // Move no capture
-                movePieceFromPos(playerPiece, mousepos);
                 playMoveSound();
+                movePieceFromPos(playerPiece, mousepos);
+
                 break;
 
             case 2: // Move + capture
@@ -573,10 +573,15 @@ void update(void)
                 SDL_Log("That move has not been set up yet\n");
                 break;
             }
-
+            bool checkStatus = setCheck();
             if (result)
             {
-                setCheck();
+                // Sfx
+                if (checkStatus)
+                {
+                    playCheckSound();
+                }
+
                 player = !player;
                 // RECORDING MOVE
                 if (player)

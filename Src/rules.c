@@ -6,12 +6,17 @@ static bool playerBool; /*True if white.*/
 static PieceNode *playerFamily;
 static PieceNode *opponentFamily;
 static int valid = false;
-static Tile destTile, origTile, *KingsTile;
+Tile destTile, origTile, *KingsTile, *enemyKingsTile;
+
 static Tile whiteKingsTile = {5, 1};
 static Tile blackKingsTile = {5, 8};
+
+static bool whiteCheck = false;
+static bool blackCheck = false;
+static bool *kingsCheck;
 static bool friendlyFire = false;
 static bool capturing = false;
-static bool KingChecked = false;
+// static bool KingChecked = false;
 static int xVector, yVector, yDisplacement, xDisplacement;
 
 static CastlingOptions castlingPossibleWhite = {true, true};
@@ -31,6 +36,8 @@ bool checkSkip(void)
 {
 
     int tilesSkipped = xDisplacement ? xDisplacement : yDisplacement;
+    if (tilesSkipped <= 0)
+        return true; // Nothing to skip
     int yUnit = yVector / tilesSkipped;
     int xUnit = xVector / tilesSkipped;
     int TileBeingChecked = 1;
@@ -76,31 +83,13 @@ bool TileHasOccupant(Tile dest, PieceNode *pieceFamily)
     return pieceFromTile(dest, pieceFamily).index != -1;
 }
 
-bool init_Locals(Piece global_piece, Tile global_dest, // Doesn't include check logic///
-                 bool global_player /*True if white.*/,
-                 PieceNode *global_playerFamily, PieceNode *global_opponentFamily)
-{
-    if (global_playerFamily == NULL || global_opponentFamily == NULL)
-    {
-        SDL_Log("One of the piece families is NULL\n");
-        return false;
-    }
-    // Give locals global values.
-    movedPiece = global_piece;
-    playerBool = global_player;
-    playerFamily = global_playerFamily;
-    opponentFamily = global_opponentFamily;
-    destTile = global_dest;
-    return true;
-}
-
-// Move Logic.
-
-// Rules for all pieces
+// Move Logic
+//  Rules for all pieces
 void validateGeneralMoverules(void)
 {
     // Move has to be within board (0-0)::::: DONE
-    if (destTile.x > X_TILES || destTile.y > Y_TILES || destTile.y < 1)
+    if (destTile.x > X_TILES || destTile.y > Y_TILES ||
+        destTile.y < 1 || destTile.x < 1)
     {
         // SDL_Log("Move is out Of range.\n");
         valid = false;
@@ -115,15 +104,21 @@ void validateGeneralMoverules(void)
         return;
     }
 
-    // King should not be captured.
-    if (capturing)
-    {
-        if (match_Piece(pieceFromTile(destTile, opponentFamily), KING_NAME))
-        {
-            valid = false;
-            return;
-        }
-    }
+    ////// ##THIS WAS A BUG. Checking for checks automatically evaluated as false
+    /////  ##IT TOOK ME AN UNHEALTHY AMOUNT OF TIME TO FIGURE THIS OUT.
+    /////  ##It's 01:36 AM monday. I legit just turned of the lights to sleep.
+    /////  ##I don't wanna talk about it.
+
+    // // #King should not be captured.
+    // #if (capturing)
+    // #{
+    //     #if (match_Piece(pieceFromTile(destTile, opponentFamily), KING_NAME))
+    //     {
+    //         valid = false;
+    //         return;
+    //     }
+    // #}
+
     valid = true;
     return;
 }
@@ -319,17 +314,10 @@ void validateBishopMove()
 
 void validateKnightMove()
 {
-    if (xDisplacement != 1 && yDisplacement != 1)
+    if (!((xDisplacement == 2 && yDisplacement == 1) ||
+          (xDisplacement == 1 && yDisplacement == 2)))
     {
         valid = false;
-
-        return;
-    }
-    if ((xDisplacement == 1 && yDisplacement != 2) ||
-        (yDisplacement == 1 && xDisplacement != 2))
-    {
-        valid = false;
-
         return;
     }
     valid = true + capturing;
@@ -338,17 +326,6 @@ void validateKnightMove()
 
 void validateQueenMove()
 {
-    // Diagonals and Straight any distance on the board
-    if (xDisplacement >= 2 || yDisplacement >= 2)
-    {
-        valid = checkSkip();
-        if (!valid)
-        {
-
-            return;
-        }
-    }
-
     if ((xDisplacement != yDisplacement) &&
         (xDisplacement != 0 && yDisplacement != 0))
     {
@@ -356,12 +333,22 @@ void validateQueenMove()
         return;
     }
 
+    // Diagonals and Straight any distance on the board
+    if (xDisplacement >= 2 || yDisplacement >= 2)
+    {
+        valid = checkSkip();
+        if (!valid)
+        {
+            return;
+        }
+    }
+
     valid = true + capturing;
     return;
 }
 #pragma endregion
 
-void validateMove()
+void performValidation()
 {
     // ALL MOVES
     validateGeneralMoverules();
@@ -412,27 +399,45 @@ void validateMove()
 }
 
 //  CHESS RULES
+// This checks if a move is valid following BASIC chess rules.
+// Checks Pins and enpassant are not checked for.
+// A second function MUST be called to finish the validation.
 // Returns 0 for invalid move.
 // Returns non-zero for valid move
 // 1 for no capture.
 // 2 for capture.
 // 3 for castling kingSide.
 // 4 for castling queensSide.
-
-int moveCalculations()
+void initMove(Piece global_piece, Tile global_dest, // Doesn't include check logic///
+              bool global_player /*True if white.*/,
+              PieceNode *global_playerFamily, PieceNode *global_opponentFamily)
 {
-    // Check
-    static int initKingPos = 0;
-    KingsTile = playerBool ? &whiteKingsTile : &blackKingsTile;
-    // This is swapped because the one playing is the enemy
-    // to the other team and we want check to refer to them ($o$)
-
-    if (initKingPos < 2) // Set original position of the king and update on movement.
+    if (global_playerFamily == NULL || global_opponentFamily == NULL)
     {
-        *KingsTile = (Tile){KING_X[0], playerBool ? WHITE_Y : BLACK_Y};
-        initKingPos++;
+        SDL_Log("One of the piece families is NULL\n");
+        return;
     }
 
+    // Give locals global values.
+    movedPiece = global_piece;
+    playerBool = global_player;
+    playerFamily = global_playerFamily;
+    opponentFamily = global_opponentFamily;
+    destTile = global_dest;
+
+    // Math part
+    if (movedPiece.ptr == NULL || movedPiece.index < 0 ||
+        movedPiece.index >= movedPiece.ptr->appearances)
+    {
+        SDL_Log("moveCalculations: movedPiece invalid\n");
+        return;
+    }
+
+    // Check
+    KingsTile = playerBool ? &whiteKingsTile : &blackKingsTile;
+    enemyKingsTile = !playerBool ? &whiteKingsTile : &blackKingsTile;
+    kingsCheck = !playerBool ? &whiteCheck : &blackCheck;
+    // to the other team and we want check to refer to them ($o$)
     // Castling
     castlingPossible = playerBool ? &castlingPossibleWhite : &castlingPossibleBlack;
 
@@ -446,39 +451,42 @@ int moveCalculations()
     yDisplacement = SDL_abs(yVector);
     xDisplacement = SDL_abs(xVector); // Take abs
 
-    validateMove();
-    return valid;
+    // Validity check
+    // SDL_Log("White : %c%d\nBlack : %c%d\n\n",
+    //         chessX(whiteKingsTile.x), whiteKingsTile.y,
+    //         chessX(blackKingsTile.x), blackKingsTile.y);
+    return;
 }
 
 // Check if any piece from the given team can get to this given tile in ONE MOVE.
 // True if possible false otherwise:
-bool TileUnderAttack(Tile tileToCheck, PieceNode *opps)
+// Pawn don't breaks this logic.
+// This function will now be for checking for check.
+bool setCheck(void)
 {
-    PieceNode *tempPieceNode = opps;
-    Piece tempPiece;
+    PieceNode *tempPieceNode = playerFamily;
     while (tempPieceNode != NULL)
     {
         for (int k = 0; k < tempPieceNode->appearances; k++)
         {
-            tempPiece = (Piece){tempPieceNode, k};
-            init_Locals(tempPiece, tileToCheck, playerBool, playerFamily, opps);
-            if (moveCalculations() != 0)
+            Piece tempPiece = {tempPieceNode, k};
+            initMove(tempPiece, *enemyKingsTile, playerBool, playerFamily, opponentFamily);
+            performValidation();
+            if (valid)
             {
+                SDL_Log("Enemy in Check!\n\n\n");
+                *kingsCheck = true;
                 return true;
             }
         }
         tempPieceNode = tempPieceNode->next;
     }
+    *kingsCheck = false;
     return false;
 }
 
-void setCheck()
+int finalizeMove(void)
 {
-
-    bool KingChecked = TileUnderAttack(*KingsTile, opponentFamily);
-    SDL_Log("%d, %d ", KingsTile->x, KingsTile->y);
-    if (KingChecked)
-    {
-        SDL_Log("A check has occured!");
-    }
+    performValidation();
+    return valid;
 }

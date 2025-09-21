@@ -36,9 +36,10 @@ void deletePiece(Piece fakePiece, PieceNode **FakeFamily);
 
 Piece pieceFromTile(Tile dest, PieceNode *pieceFamily); // Checks against Piece coordinate.
 bool TileHasOccupant(Tile dest, PieceNode *pieceFamily);
-bool init_Locals(Piece global_piece, Tile global_dest,
-                 bool global_player /*True if white.*/,
-                 PieceNode *global_playerFamily, PieceNode *global_opponentFamily);
-int moveCalculations();
-void setCheck();
+void initMove(Piece global_piece, Tile global_dest,
+              bool global_player /*True if white.*/,
+              PieceNode *global_playerFamily, PieceNode *global_opponentFamily);
+
+int finalizeMove(void);
+bool setCheck(void);
 #endif

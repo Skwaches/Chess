@@ -8,6 +8,7 @@ static MIX_Track *sfxTrack;
 static MIX_Audio *captureAudio;
 static MIX_Audio *moveAudio;
 static MIX_Audio *castleAudio;
+static MIX_Audio *checkAudio;
 
 bool Init_Audio(void)
 {
@@ -110,6 +111,29 @@ bool Init_Audio(void)
                 return false;
             }
         }
+        if (SDL_strcmp(soundEffects[k], CHECK_SOUND_FILE_NAME))
+        {
+            SDL_snprintf(buffer, sizeof(buffer), "%s/%s", SOUNDS_PATH, CHECK_SOUND_FILE_NAME);
+            soundIO = SDL_IOFromFile(buffer, "rb");
+            if (soundIO == NULL)
+            {
+                SDL_Log("Check Audio IO :%s\n", SDL_GetError());
+                SDL_free(soundEffects);
+                MIX_DestroyTrack(sfxTrack);
+                MIX_DestroyMixer(ChessMixer);
+                return false;
+            }
+            checkAudio = MIX_LoadAudio_IO(ChessMixer, soundIO, true, true);
+            if (checkAudio == NULL)
+            {
+                SDL_Log("Check Audio :%s\n", SDL_GetError());
+                SDL_free(soundEffects);
+                MIX_DestroyTrack(sfxTrack);
+                MIX_DestroyMixer(ChessMixer);
+                MIX_Quit();
+                return false;
+            }
+        }
     }
     // SDL_Log("Sounds Loaded!\n");
     return true;
@@ -157,6 +181,14 @@ void playCastleSound(void)
     }
     return;
 }
+void playCheckSound(void)
+{
+    if (!playSound(checkAudio))
+    {
+        SDL_Log("Something is wrong with the Check sound\n");
+    }
+    return;
+}
 
 // Easy clean up;
 void cleanAudio(void)
@@ -164,6 +196,7 @@ void cleanAudio(void)
     MIX_DestroyAudio(captureAudio);
     MIX_DestroyAudio(moveAudio);
     MIX_DestroyAudio(castleAudio);
+    MIX_DestroyAudio(checkAudio);
     MIX_DestroyTrack(sfxTrack);
     MIX_DestroyMixer(ChessMixer);
     MIX_Quit();

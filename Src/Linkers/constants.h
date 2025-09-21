@@ -48,13 +48,15 @@
 #define CAPTURE_SOUND_FILE_NAME "capture.mp3"
 #define MOVE_SOUND_FILE_NAME "move.mp3"
 #define CASTLE_SOUND_FILE_NAME "castle.mp3"
+#define CHECK_SOUND_FILE_NAME "check.mp3"
+
 // PIECE NAME
-#define KING_NAME "K"
-#define BISHOP_NAME "B"
-#define QUEEN_NAME "Q"
-#define ROOK_NAME "R"
-#define KNIGHT_NAME "N"
-#define PAWN_NAME "P"
+#define KING_NAME "King"
+#define BISHOP_NAME "Bishop"
+#define QUEEN_NAME "Queen"
+#define ROOK_NAME "Rook"
+#define KNIGHT_NAME "Knight"
+#define PAWN_NAME "Pawn"
 
 // XPOSITIONS
 extern const int PAWN_X[];

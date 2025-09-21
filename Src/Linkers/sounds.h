@@ -5,6 +5,7 @@ bool Init_Audio(void);
 void playMoveSound(void);
 void playCaptureSound(void);
 void playCastleSound(void);
+void playCheckSound(void);
 void cleanAudio(void);
 
 #endif
