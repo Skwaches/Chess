@@ -145,6 +145,9 @@ void renderTileNodes(SDL_Renderer *renderer, TileNode *HeadTile)
 }
 
 // {NULL ,-1} if not found
+// This is a GUARANTEED MEMORY leak lol. ///Prolly fixed now
+// This is sooo Assss
+
 Piece pieceFromPos(PieceNode *HeadPiece, SDL_FPoint *pos)
 {
     PieceNode *TempPiece = HeadPiece;
@@ -155,10 +158,8 @@ Piece pieceFromPos(PieceNode *HeadPiece, SDL_FPoint *pos)
         {
             if (SDL_PointInRectFloat(pos, &TempPiece->rect[k]))
             {
-                Piece *selection = SDL_malloc(sizeof(Piece));
-                selection->index = k;
-                selection->ptr = TempPiece;
-                return *selection;
+                Piece selection = {TempPiece, k};
+                return selection;
             }
         }
         TempPiece = TempPiece->next;
@@ -203,6 +204,8 @@ void movePieceFromPos(Piece fakePIECE, SDL_FPoint *pos)
 }
 
 // Make these linked lists to make this easier;;;
+// Don't make them linked list
+// This is AI slop. I refuse to be judged
 void deletePiece(Piece fakePiece, PieceNode **FakeFamily)
 {
     if (fakePiece.ptr == NULL)

@@ -66,6 +66,7 @@
         "sqlite3.h": "c",
         "sdl_image.h": "c",
         "sdl_mixer.h": "c",
-        "sounds.h": "c"
+        "sounds.h": "c",
+        "charconv": "c"
     }
 }

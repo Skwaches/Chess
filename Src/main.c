@@ -16,6 +16,11 @@ bool running = true;
 
 bool player = true; // WHITE :D
 
+bool checkStatus;
+
+bool WhiteCheck = false;
+bool BlackCheck = false;
+
 PieceNode **playerPieces = NULL;
 PieceNode **opponentPieces = NULL;
 
@@ -533,9 +538,7 @@ void update(void)
         // MAKE MOVE
         if (leftMouseRelease)
         {
-
             Tile mouseTile = TileFromPos(mousepos);
-
             initMove(playerPiece, mouseTile, player, *playerPieces, *opponentPieces);
             int result = finalizeMove();
 
@@ -550,18 +553,18 @@ void update(void)
 
             case 1: // Move no capture
                 playMoveSound();
-                movePieceFromPos(playerPiece, mousepos);
+                movePiece(playerPiece, mouseTile);
 
                 break;
 
             case 2: // Move + capture
                 playCaptureSound();
                 deletePiece(pieceFromTile(mouseTile, *opponentPieces), opponentPieces);
-                movePieceFromPos(playerPiece, mousepos);
+                movePiece(playerPiece, mouseTile);
                 break;
             case 3: // Castle KingSide
                 playCastleSound();
-                movePieceFromPos(playerPiece, mousepos);
+                movePiece(playerPiece, mouseTile);
                 movePiece(pieceFromTile((Tile){ROOK_X[1], yValueOfPiece}, *playerPieces), (Tile){6, yValueOfPiece});
                 break;
             case 4: // Castle QueenSide
@@ -569,13 +572,32 @@ void update(void)
                 movePieceFromPos(playerPiece, mousepos);
                 movePiece(pieceFromTile((Tile){ROOK_X[0], yValueOfPiece}, *playerPieces), (Tile){4, yValueOfPiece});
                 break;
+            case 5: // enpassant
+                playCaptureSound();
+                movePiece(playerPiece, mouseTile);
+                Tile niceEn = (Tile){mouseTile.x, mouseTile.y + (player ? -1 : 1)};
+                deletePiece(pieceFromTile(niceEn, *opponentPieces), opponentPieces);
+                SDL_Log("Nice\n\n\n");
             default:
-                SDL_Log("That move has not been set up yet\n");
+                // SDL_Log("That move has not been set up yet\n");
                 break;
             }
-            bool checkStatus = setCheck();
+
             if (result)
             {
+                bool checkStatus = setCheck();
+                if (player)
+                {
+                    BlackCheck = checkStatus;
+                    WhiteCheck = false;
+                }
+                else
+                {
+                    WhiteCheck = checkStatus;
+                    BlackCheck = false;
+                }
+                SDL_Log("White : %d", WhiteCheck);
+                SDL_Log("Black : %d\n\n", BlackCheck);
                 // Sfx
                 if (checkStatus)
                 {
