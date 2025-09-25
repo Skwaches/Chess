@@ -12,6 +12,7 @@ typedef struct TileNode
 {
     Tile pos;
     SDL_FRect rect;
+    bool selected;
     struct TileNode *next;
 } TileNode;
 

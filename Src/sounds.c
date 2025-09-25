@@ -181,6 +181,7 @@ void playCastleSound(void)
     }
     return;
 }
+
 void playCheckSound(void)
 {
     if (!playSound(checkAudio))
@@ -190,7 +191,7 @@ void playCheckSound(void)
     return;
 }
 
-// Easy clean up;
+// Easy clean up for audio
 void cleanAudio(void)
 {
     MIX_DestroyAudio(captureAudio);

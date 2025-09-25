@@ -7,7 +7,7 @@ static Piece enPawn = {NULL, -1};
 static bool playerBool; /*True if white.*/
 static PieceNode *playerFamily;
 static PieceNode *opponentFamily;
-static int valid = false;
+static int valid = INVALID;
 Tile destTile, origTile, *playerKingsTile, *opponentKingsTile;
 static Tile whiteKingsTile = {5, 1};
 static Tile blackKingsTile = {5, 8};
@@ -15,8 +15,9 @@ static Tile *fakeMove1, *fakeMove2;
 static int enpassble = 0;
 static bool whiteCheck = false;
 static bool blackCheck = false;
-
-static bool *kingsCheck;
+static bool simming = false;
+static bool *enemykingsCheck;
+static bool noCastling = false;
 static bool friendlyFire = false;
 static bool capturing = false;
 // static bool KingChecked = false;
@@ -40,7 +41,6 @@ bool match_Piece(Piece test, const char *str2)
 // True if you're NOT skipping a piece
 bool checkSkip(void)
 {
-
     int tilesSkipped = xDisplacement ? xDisplacement : yDisplacement;
     if (tilesSkipped <= 0)
         return true; // Nothing to skip
@@ -98,7 +98,7 @@ void validateGeneralMoverules(void)
         destTile.y < 1 || destTile.x < 1)
     {
         // SDL_Log("Move is out Of range.\n");
-        valid = false;
+        valid = INVALID;
         return;
     }
 
@@ -108,14 +108,14 @@ void validateGeneralMoverules(void)
     // Don't delete preferrably.
     if (xDisplacement > 8 || yDisplacement > 8)
     {
-        valid = false;
+        valid = INVALID;
         return;
     }
     // You cannot capture your own piece.
     if (friendlyFire)
     {
         // SDL_Log("Friendly Fire is not Allowed!\n");
-        valid = false;
+        valid = INVALID;
         return;
     }
 
@@ -129,12 +129,12 @@ void validateGeneralMoverules(void)
     // #{
     //     #if (match_Piece(pieceFromTile(destTile, opponentFamily), KING_NAME))
     //     {
-    //         valid = false;
+    //         valid = INVALID;
     //         return;
     //     }
     // #}
 
-    valid = true;
+    valid = VALID;
     return;
 }
 
@@ -152,7 +152,7 @@ void validatePawnMove()
     // Forward movement or One Diagonal
     if (xDisplacement > 1 || yDisplacement > 2 || (playerBool ? (yVector <= 0) : (yVector >= 0)))
     {
-        valid = false;
+        valid = INVALID;
         return;
     }
 
@@ -161,7 +161,7 @@ void validatePawnMove()
         // Can't capture when moving forward.
         if (capturing)
         {
-            valid = false;
+            valid = INVALID;
             return;
         }
         valid = checkSkip();
@@ -169,10 +169,11 @@ void validatePawnMove()
             return;
         if (xDisplacement || origTile.y != OrigPawnY)
         {
-            valid = false;
+            valid = INVALID;
             return;
         }
-        enPawn = movedPiece;
+        if (!simming)
+            enPawn = movedPiece;
     }
 
     else // yDisplacement == 1
@@ -189,27 +190,27 @@ void validatePawnMove()
                     enPawnDest = (Tile){enPawn.ptr->pos[enPawn.index].x, enPawn.ptr->pos[enPawn.index].y + (playerBool ? 1 : -1)};
                     if (destTile.x == enPawnDest.x && destTile.y == enPawnDest.y)
                     {
-                        valid = 5;
+                        valid = ENPASSANT;
                         return;
                     }
                 }
 
                 // else
-                valid = false;
+                valid = INVALID;
                 return;
             }
-            valid = true + capturing;
+            valid = VALID + capturing;
             return;
         }
 
         // Can't capture without xDisplacement
         else if (capturing)
         {
-            valid = false;
+            valid = INVALID;
             return;
         }
     }
-    valid = true + capturing;
+    valid = VALID + capturing;
     return;
 }
 
@@ -221,24 +222,31 @@ void validateKingMove()
     //      3. No previous king or rook move.
     //      4. No y Displacement.
     //      5. Can't castle through check.
-    if (checkSkip() && xDisplacement == 2 && yDisplacement == 0 && origTile.x == KING_X[0] && !capturing)
+    //      6. Can't be in check.
+    if (checkSkip() && xDisplacement == 2 && yDisplacement == 0 && origTile.x == KING_X[0] && !capturing && !noCastling)
     {
         // Castle;
         if (xVector > 0 && castlingPossible->kingside)
         {
-            castlingPossible->kingside = false;
-            castlingPossible->queenside = false;
-            *playerKingsTile = destTile;
-            valid = 3;
+            if (!simming)
+            {
+                castlingPossible->kingside = false;
+                castlingPossible->queenside = false;
+                *playerKingsTile = destTile;
+            }
+            valid = KINGSIDE_CASTLING;
             return;
         }
 
         if (xVector < 0 && castlingPossible->queenside && checkSkip())
         {
-            castlingPossible->kingside = false;
-            castlingPossible->queenside = false;
-            *playerKingsTile = destTile;
-            valid = 4;
+            if (!simming)
+            {
+                castlingPossible->kingside = false;
+                castlingPossible->queenside = false;
+                *playerKingsTile = destTile;
+            }
+            valid = QUEENSIDE_CASTLING;
             return;
         }
     }
@@ -247,7 +255,7 @@ void validateKingMove()
     if (yDisplacement > 1 || xDisplacement > 1)
     {
 
-        valid = false;
+        valid = INVALID;
         return;
     }
 
@@ -258,13 +266,14 @@ void validateKingMove()
     Piece possiblePawn2 = pieceFromTile((Tile){destTile.x - 1, destTile.y + (playerBool ? 1 : -1)}, opponentFamily);
     if (match_Piece(possiblePawn1, PAWN_NAME) || match_Piece(possiblePawn2, PAWN_NAME))
     {
-        valid = false;
+        valid = INVALID;
         SDL_Log("OH dear God! A pawn!");
         return;
     }
 
-    *playerKingsTile = destTile;
-    valid = true + capturing;
+    if (!simming)
+        *playerKingsTile = destTile;
+    valid = VALID + capturing;
     return;
 }
 
@@ -274,25 +283,17 @@ void validateRookMove()
     // Can't Jump Pieces
     if (xDisplacement && yDisplacement)
     {
-        // Straight paths
-
-        valid = false;
+        valid = INVALID;
+        return;
+    }
+    valid = checkSkip();
+    if (!valid)
+    {
         return;
     }
 
-    bool checkSkipping = xDisplacement >= 2 || yDisplacement >= 2;
-
-    if (checkSkipping)
-    {
-        valid = checkSkip();
-        if (!valid)
-        {
-            return;
-        }
-    }
-
     // SET SPECIFIC CASTLING SIDE TO FALSE
-    if (castlingPossible->queenside)
+    if (castlingPossible->queenside & !simming)
     {
         if (origTile.x == ROOK_X[0])
         {
@@ -300,10 +301,11 @@ void validateRookMove()
             castlingPossible->queenside = false;
         }
     }
-    if (castlingPossible->kingside)
+    if (castlingPossible->kingside && !simming)
     {
         if (origTile.x == ROOK_X[1])
         {
+
             castlingPossible->kingside = false;
         }
     }
@@ -317,7 +319,7 @@ void validateBishopMove()
     if (xDisplacement != yDisplacement)
     {
 
-        valid = false;
+        valid = INVALID;
         return;
     }
 
@@ -331,7 +333,7 @@ void validateBishopMove()
             return;
         }
     }
-    valid = true + capturing;
+    valid = VALID + capturing;
     return;
 }
 
@@ -340,10 +342,10 @@ void validateKnightMove()
     if (!((xDisplacement == 2 && yDisplacement == 1) ||
           (xDisplacement == 1 && yDisplacement == 2)))
     {
-        valid = false;
+        valid = INVALID;
         return;
     }
-    valid = true + capturing;
+    valid = VALID + capturing;
     return;
 }
 
@@ -352,7 +354,7 @@ void validateQueenMove()
     if ((xDisplacement != yDisplacement) &&
         (xDisplacement != 0 && yDisplacement != 0))
     {
-        valid = false;
+        valid = INVALID;
         return;
     }
 
@@ -366,7 +368,7 @@ void validateQueenMove()
         }
     }
 
-    valid = true + capturing;
+    valid = VALID + capturing;
     return;
 }
 #pragma endregion
@@ -458,13 +460,12 @@ void initMove(Piece global_piece, Tile global_dest, // Doesn't include check log
     }
 
     // Check
-    playerKingsTile = playerBool ? &whiteKingsTile : &blackKingsTile;
-    opponentKingsTile = !playerBool ? &whiteKingsTile : &blackKingsTile;
 
     // to the other team and we want check to refer to them ($o$)
     // Castling
+    playerKingsTile = playerBool ? &whiteKingsTile : &blackKingsTile;
+    opponentKingsTile = !playerBool ? &whiteKingsTile : &blackKingsTile;
     castlingPossible = playerBool ? &castlingPossibleWhite : &castlingPossibleBlack;
-
     origTile = movedPiece.ptr->pos[movedPiece.index];
     friendlyFire = TileHasOccupant(destTile, playerFamily);
     capturing = TileHasOccupant(destTile, opponentFamily); // Piece specific.
@@ -621,12 +622,13 @@ bool setCheck(void)
     Tile SaveddestTile = destTile;
     Piece savedMovedPiece = movedPiece;
     int tmpValid = valid;
+
     Tile *savedKingsTile = playerKingsTile;
     Tile *SavedOppsKingsTile = opponentKingsTile;
 
     PieceNode *tempPieceNode = playerFamily;
-    kingsCheck = !playerBool ? &whiteCheck : &blackCheck; // Reverse because we are setting Opponent's Check
-
+    // No need to save this.
+    enemykingsCheck = !playerBool ? &whiteCheck : &blackCheck; // Reverse because we are setting Opponent's Check
     while (tempPieceNode != NULL)
     {
         for (int k = 0; k < tempPieceNode->appearances; k++)
@@ -648,14 +650,16 @@ bool setCheck(void)
 
             if (simValid)
             {
-                *kingsCheck = true;
+
+                *enemykingsCheck = true;
                 return true;
             }
         }
         tempPieceNode = tempPieceNode->next;
     }
 
-    *kingsCheck = false;
+    *enemykingsCheck = false;
+
     return false;
 }
 
@@ -669,12 +673,15 @@ bool setCheck(void)
 // It doesn't work with pawns So I just did it manually.... I'm not happy.
 bool setBadCheck(void)
 {
+
     // Store current valued; //Reset when exiting function
+    /*Values loaded in init must be restored to their original*/
     bool SavedplayerBool = playerBool;
     PieceNode *SavedplayerFamily = playerFamily;
     PieceNode *SavedopponentFamily = opponentFamily;
     Tile SaveddestTile = destTile;
     Piece savedMovedPiece = movedPiece;
+    // Orig value of valid.
     int tmpValid = valid;
     Tile *savedKingsTile = playerKingsTile;
     Tile *SavedOppsKingsTile = opponentKingsTile;
@@ -703,7 +710,6 @@ bool setBadCheck(void)
                     movedPiece = savedMovedPiece;
                     playerKingsTile = savedKingsTile;
                     opponentKingsTile = SavedOppsKingsTile;
-
                     return true; // pawn attacks king
                 }
                 continue;
@@ -725,143 +731,51 @@ bool setBadCheck(void)
 
             if (simValid)
             {
+
                 return true;
             }
         }
         tempPieceNode = tempPieceNode->next;
     }
-    return false;
-}
 
-// This is setBadCheck customized for castling check;
-bool jumpingCheck(void)
-{
-
-    if (!(valid == 3 || valid == 4))
-    {
-        return false;
-    }
-    // Store current valued; //Reset when exiting function
-    bool SavedplayerBool = playerBool;
-    PieceNode *SavedplayerFamily = playerFamily;
-    PieceNode *SavedopponentFamily = opponentFamily;
-    Tile SaveddestTile = destTile;
-    Piece savedMovedPiece = movedPiece;
-    int tmpValid = valid;
-    Tile *savedKingsTile = playerKingsTile;
-    Tile *SavedOppsKingsTile = opponentKingsTile;
-
-    PieceNode *tempPieceNode = opponentFamily;
-    Tile jumpedForCastling = (Tile){origTile.x + (valid == 3) ? 1 : -1, origTile.y};
-    while (tempPieceNode != NULL)
-    {
-        for (int k = 0; k < tempPieceNode->appearances; k++)
-        {
-            Piece tempPiece = {tempPieceNode, k};
-            // Special-case pawn attacks
-            if (match_Piece(tempPiece, PAWN_NAME) && tmpValid)
-            {
-                int dir = playerBool ? -1 : +1; // opponent pawn direction
-                if ((jumpedForCastling.y == tempPieceNode->pos[k].y + dir) &&
-                    (jumpedForCastling.x == tempPieceNode->pos[k].x + 1 ||
-                     jumpedForCastling.x == tempPieceNode->pos[k].x - 1))
-                {
-                    // Reset if changed
-                    valid = tmpValid;
-                    playerBool = SavedplayerBool;
-                    playerFamily = SavedplayerFamily;
-                    opponentFamily = SavedopponentFamily;
-                    destTile = SaveddestTile;
-                    movedPiece = savedMovedPiece;
-                    playerKingsTile = savedKingsTile;
-                    opponentKingsTile = SavedOppsKingsTile;
-
-                    return true; // pawn attacks king
-                }
-                continue;
-            }
-
-            initMove(tempPiece, jumpedForCastling, playerBool, opponentFamily, playerFamily);
-            performValidation();
-            bool simValid = valid;
-
-            // Reset if changed
-            valid = tmpValid;
-            playerBool = SavedplayerBool;
-            playerFamily = SavedplayerFamily;
-            opponentFamily = SavedopponentFamily;
-            destTile = SaveddestTile;
-            movedPiece = savedMovedPiece;
-            playerKingsTile = savedKingsTile;
-            opponentKingsTile = SavedOppsKingsTile;
-
-            if (simValid)
-            {
-                return true;
-            }
-        }
-        tempPieceNode = tempPieceNode->next;
-    }
     return false;
 }
 
 int finalizeMove(void)
 {
-    /* Snapshot globals that performValidation() and validators may change */
-    Piece savedEnPawn = enPawn;
-    CastlingOptions savedWCast = castlingPossibleWhite;
-    CastlingOptions savedBCast = castlingPossibleBlack;
+    //  This has been added cause simming doesn't work as intended.
+    // Remove once a better solution has been found.
     Tile savedWhiteKing = whiteKingsTile;
     Tile savedBlackKing = blackKingsTile;
-    int savedValid = valid;
-    Piece savedMovedPiece = movedPiece;
-    Tile savedDest = destTile;
-    PieceNode *savedPlayerFamily = playerFamily;
-    PieceNode *savedOpponentFamily = opponentFamily;
-    bool savedPlayerBool = playerBool;
 
     performValidation();
 
-    /* If basic validation failed, restore mutated globals and bail out */
     if (!valid)
     {
-        enPawn = savedEnPawn;
-        castlingPossibleWhite = savedWCast;
-        castlingPossibleBlack = savedBCast;
         whiteKingsTile = savedWhiteKing;
         blackKingsTile = savedBlackKing;
-        valid = savedValid;
-        movedPiece = savedMovedPiece;
-        destTile = savedDest;
-        playerFamily = savedPlayerFamily;
-        opponentFamily = savedOpponentFamily;
-        playerBool = savedPlayerBool;
         return valid;
     }
 
     fakePlay();
+    simming = true;
     bool BadCheckMove = setBadCheck();
-    bool jumpedCheck = jumpingCheck();
+    noCastling = setCheck();
+    simming = false;
     unfakePlay();
-
-    if (BadCheckMove || jumpedCheck)
+    if (BadCheckMove)
     {
         SDL_Log("Don't put yourself in check");
-        /* Ensure nothing leaked from validation/simulation */
-        enPawn = savedEnPawn;
-        castlingPossibleWhite = savedWCast;
-        castlingPossibleBlack = savedBCast;
         whiteKingsTile = savedWhiteKing;
         blackKingsTile = savedBlackKing;
-        valid = false;
+        valid = INVALID;
         return valid;
     }
 
     /* Commit en-passant bookkeeping */
     if (enPawn.ptr != NULL)
         enpassble += 1;
-
-    if (valid == 5 || enpassble == 2)
+    if (valid == ENPASSANT || enpassble == 2)
     {
         enPawn = (Piece){NULL, -1};
         enpassble = 0;

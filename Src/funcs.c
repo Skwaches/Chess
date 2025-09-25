@@ -106,19 +106,10 @@ void freePieces(PieceNode *Headnode)
     }
 }
 
-void freeTileNodes(TileNode *HeadNode)
-{
-    TileNode *TempNode = HeadNode;
-    TileNode *NextNode;
-    while (TempNode != NULL)
-    {
-        NextNode = TempNode->next;
-        SDL_free(TempNode);
-        TempNode = NextNode;
-    }
-}
-
-void renderPieces(SDL_Renderer *renderer, PieceNode *HeadPiece)
+// renders all Pieces
+// Returns true on success and false otherwise
+// Call SDL_GetError for info
+bool renderPieces(SDL_Renderer *renderer, PieceNode *HeadPiece)
 {
     PieceNode *TempPiece = HeadPiece;
     while (TempPiece != NULL)
@@ -127,27 +118,20 @@ void renderPieces(SDL_Renderer *renderer, PieceNode *HeadPiece)
         {
             if (TempPiece->texture != NULL && TempPiece->pos[a].x != 0) // Won't render if x coord is 0
             {
-                SDL_RenderTexture(renderer, TempPiece->texture, NULL, &TempPiece->rect[a]);
+                if (!SDL_RenderTexture(renderer, TempPiece->texture, NULL, &TempPiece->rect[a]))
+                {
+                    return false;
+                }
             }
         }
         TempPiece = TempPiece->next;
     }
-}
-
-void renderTileNodes(SDL_Renderer *renderer, TileNode *HeadTile)
-{
-    TileNode *TempTile = HeadTile;
-    while (TempTile != NULL)
-    {
-        SDL_RenderFillRect(renderer, &TempTile->rect);
-        TempTile = TempTile->next;
-    }
+    return true;
 }
 
 // {NULL ,-1} if not found
-// This is a GUARANTEED MEMORY leak lol. ///Prolly fixed now
+// This was a GUARANTEED MEMORY leak lol. ///Prolly fixed now
 // This is sooo Assss
-
 Piece pieceFromPos(PieceNode *HeadPiece, SDL_FPoint *pos)
 {
     PieceNode *TempPiece = HeadPiece;

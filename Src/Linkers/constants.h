@@ -58,7 +58,19 @@
 #define KNIGHT_NAME "Knight"
 #define PAWN_NAME "Pawn"
 
-// XPOSITIONS
+// Move Codes
+#define INVALID 0
+#define VALID 1
+#define VALID_CAPTURE 2
+#define KINGSIDE_CASTLING 3
+#define QUEENSIDE_CASTLING 4
+#define ENPASSANT 5
+
+// Board Colors
+extern Uint8 LIGHT_TILE_COLOR[];
+extern Uint8 DARK_TILE_COLOR[];
+
+//  XPOSITIONS
 extern const int PAWN_X[];
 extern const int BISHOP_X[];
 extern const int QUEEN_X[];

@@ -22,8 +22,8 @@ PieceNode *makePieceNode(SDL_Renderer *renderer,
                          const int y);
 void freePieces(PieceNode *Headnode);
 void freeTileNodes(TileNode *HeadNode);
-void renderPieces(SDL_Renderer *renderer, PieceNode *HeadPiece);
-void renderTileNodes(SDL_Renderer *renderer, TileNode *HeadTile);
+bool renderPieces(SDL_Renderer *renderer, PieceNode *HeadPiece);
+bool renderTileNodes(SDL_Renderer *renderer, TileNode *HeadTile);
 char chessX(int number);
 int realX(char letter);
 Piece pieceFromPos(PieceNode *HeadPiece, SDL_FPoint *pos); // Checks against Pieces rect ie. where it is visually.
@@ -42,4 +42,5 @@ void initMove(Piece global_piece, Tile global_dest,
 
 int finalizeMove(void);
 bool setCheck(void);
+TileNode *setTiles(bool start_Offset);
 #endif

@@ -1,7 +1,7 @@
 #include "Linkers/funcs.h"
+
 #pragma region Globals
 // Frame measurements
-
 int starttime = 0;
 float totaltime = 0;
 int frames = 0;
@@ -31,7 +31,7 @@ SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 
 TileNode *headLightTile = NULL;
-
+TileNode *headDarkTile = NULL;
 PieceNode *blackHeadPiece = NULL;
 PieceNode *whiteHeadPiece = NULL;
 
@@ -40,11 +40,7 @@ SDL_FPoint *mousepos = NULL;
 char moveMadeWhite[40];
 char moveMadeBlack[40];
 
-// MIX_Mixer *myMixer;
-// MIX_Audio *captureSound;
-// MIX_Audio *moveSound;
 #pragma endregion Globals
-
 // FUNCTIONS
 
 // Returns Current FPS Since Launch
@@ -153,7 +149,6 @@ void clean_pieces()
 
 void setup(void)
 {
-#pragma region mouse
 
     mousepos = SDL_malloc(sizeof(SDL_FPoint));
     if (mousepos == NULL)
@@ -162,62 +157,14 @@ void setup(void)
         return;
     }
 
-#pragma endregion mouseSpace
-
-#pragma region LightTiles
-    int maxTileX = SCREENWIDTH - TILE_WIDTH;
-    int maxTileY = SCREENHEIGHT - TILE_HEIGHT;
-    int start_X = 0;
-    int start_Y = 0;
-    TileNode *tempTile;
-    size_t tileNode_size = sizeof(TileNode);
-    bool offset;
-    headLightTile = SDL_malloc(tileNode_size);
-    if (headLightTile == NULL)
+    headLightTile = setTiles(false);
+    headDarkTile = setTiles(true);
+    if (headDarkTile == NULL || headLightTile == NULL)
     {
         clean_tile();
         accident();
-        return;
+        SDL_Log("Problem with Tiles");
     }
-    tempTile = headLightTile;
-    offset = false;
-    for (int y = start_Y; y <= maxTileY; y += TILE_HEIGHT)
-    {
-
-        if (offset)
-        {
-            start_X = TILE_WIDTH;
-        }
-        else
-        {
-            start_X = 0;
-        }
-        offset = !offset;
-
-        for (int x = start_X; x <= maxTileX; x += 2 * TILE_WIDTH)
-        {
-            SDL_FRect temp_rect = {x, y, TILE_WIDTH, TILE_HEIGHT};
-            tempTile->rect = temp_rect;
-            tempTile->pos = (Tile){(int)x / TILE_WIDTH + 1, 8 - (int)y / TILE_HEIGHT};
-            ;
-            if (y + TILE_HEIGHT > maxTileY && x + 2 * TILE_WIDTH > maxTileX)
-            {
-                tempTile->next = NULL;
-                tempTile = tempTile->next;
-                break;
-            }
-            tempTile->next = SDL_malloc(tileNode_size);
-            if (tempTile->next == NULL)
-            {
-                clean_tile();
-                freeTileNodes(headLightTile);
-                return;
-            }
-            tempTile = tempTile->next;
-        }
-    }
-#pragma endregion LightTiles
-
     // ASSETS
     char buffer[MAX_ASSET_PATH];
     int itemcount = 0;
@@ -547,32 +494,32 @@ void update(void)
 
             switch (result)
             {
-            case 0: // Invalid move
+            case INVALID: // Invalid move
                 untrackMouse(playerPiece);
                 break;
 
-            case 1: // Move no capture
+            case VALID: // Move no capture
                 playMoveSound();
                 movePiece(playerPiece, mouseTile);
 
                 break;
 
-            case 2: // Move + capture
+            case VALID_CAPTURE: // Move + capture
                 playCaptureSound();
                 deletePiece(pieceFromTile(mouseTile, *opponentPieces), opponentPieces);
                 movePiece(playerPiece, mouseTile);
                 break;
-            case 3: // Castle KingSide
+            case KINGSIDE_CASTLING: // Castle KingSide
                 playCastleSound();
                 movePiece(playerPiece, mouseTile);
                 movePiece(pieceFromTile((Tile){ROOK_X[1], yValueOfPiece}, *playerPieces), (Tile){6, yValueOfPiece});
                 break;
-            case 4: // Castle QueenSide
+            case QUEENSIDE_CASTLING: // Castle QueenSide
                 playCastleSound();
                 movePieceFromPos(playerPiece, mousepos);
                 movePiece(pieceFromTile((Tile){ROOK_X[0], yValueOfPiece}, *playerPieces), (Tile){4, yValueOfPiece});
                 break;
-            case 5: // enpassant
+            case ENPASSANT: // enpassant
                 playCaptureSound();
                 movePiece(playerPiece, mouseTile);
                 Tile niceEn = (Tile){mouseTile.x, mouseTile.y + (player ? -1 : 1)};
@@ -633,30 +580,51 @@ void update(void)
     }
 }
 
-void render(void)
+bool render(void)
 {
-    // DARK TILES
-    SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
-    SDL_RenderClear(renderer);
+    // Background
+    if (!SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255))
+        return false;
+    if (!SDL_RenderClear(renderer))
+        return false;
 
-    // LIGHT TILES
-    SDL_SetRenderDrawColor(renderer, 10, 150, 150, 255);
-    renderTileNodes(renderer, headLightTile);
-    renderPieces(renderer, blackHeadPiece);
-    renderPieces(renderer, whiteHeadPiece);
+    // Light Tiles
+    if (!SDL_SetRenderDrawColor(renderer, LIGHT_TILE_COLOR[0], LIGHT_TILE_COLOR[1], LIGHT_TILE_COLOR[2], LIGHT_TILE_COLOR[3]))
+        return false;
 
-    SDL_RenderPresent(renderer);
+    if (!renderTileNodes(renderer, headLightTile))
+        return false;
+
+    // Dark Tiles
+    if (!SDL_SetRenderDrawColor(renderer, DARK_TILE_COLOR[0], DARK_TILE_COLOR[1], DARK_TILE_COLOR[2], DARK_TILE_COLOR[3]))
+        return false;
+
+    if (!renderTileNodes(renderer, headDarkTile))
+        return false;
+
+    // Black Pieces
+    if (!renderPieces(renderer, blackHeadPiece))
+        return false;
+
+    // White Pieces
+    if (!renderPieces(renderer, whiteHeadPiece))
+        return false;
+
+    // Present
+    if (!SDL_RenderPresent(renderer))
+        return false;
+    return true;
 }
 
 void clean(void)
 {
+    cleanAudio();
     closeDataBase();
     freePieces(blackHeadPiece);
     freeTileNodes(headLightTile);
     SDL_free(mousepos);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
-    // MIX_Quit();
     SDL_Quit();
 }
 
@@ -674,12 +642,15 @@ int main()
     {
         process_input();
         update();
-        render();
+        if (!render())
+            running = false;
     }
 
-    if (successfulLaunch)
-    {
-        clean();
-    };
+    // Error during launch
+    if (!successfulLaunch)
+        return 1;
+
+    // Success
+    clean();
     return 0;
 }

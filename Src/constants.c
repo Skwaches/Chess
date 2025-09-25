@@ -1,4 +1,6 @@
 #include "Linkers/funcs.h"
+Uint8 LIGHT_TILE_COLOR[] = {130, 120, 150, 255};
+Uint8 DARK_TILE_COLOR[] = {40, 40, 40, 255};
 const int PAWN_X[] = {1, 2, 3, 4, 5, 6, 7, 8};
 const int BISHOP_X[] = {3, 6};
 const int QUEEN_X[] = {4};
