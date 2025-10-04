@@ -67,6 +67,15 @@
         "sdl_image.h": "c",
         "sdl_mixer.h": "c",
         "sounds.h": "c",
-        "charconv": "c"
+        "charconv": "c",
+        "chrono": "c",
+        "functional": "c",
+        "compare": "c",
+        "type_traits": "c",
+        "format": "c",
+        "fstream": "c",
+        "iosfwd": "c",
+        "tuple": "c",
+        "variant": "c"
     }
 }

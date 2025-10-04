@@ -10,37 +10,29 @@
 #include "constants.h"
 #include "movesSDK.h"
 #include "sounds.h"
+#include "rules.h"
 
 Tile TileFromPos(SDL_FPoint *pos);
 SDL_FRect rectFromTile(Tile cords);
-PieceNode *makePieceNode(SDL_Renderer *renderer,
-                         char *buffer,
-                         PieceNode *tempPiece,
-                         const int appearances,
-                         const char *name,
-                         const int *x,
-                         const int y);
 void freePieces(PieceNode *Headnode);
 void freeTileNodes(TileNode *HeadNode);
 bool renderPieces(SDL_Renderer *renderer, PieceNode *HeadPiece);
-bool renderTileNodes(SDL_Renderer *renderer, TileNode *HeadTile);
+bool renderTileNodes(SDL_Renderer *renderer, TileNode *HeadTile, Uint8 *colors);
 char chessX(int number);
 int realX(char letter);
 Piece pieceFromPos(PieceNode *HeadPiece, SDL_FPoint *pos); // Checks against Pieces rect ie. where it is visually.
 SDL_FRect centerRectAroundPos(SDL_FPoint *pos);
+
 void trackMouse(Piece fake_PIECE, SDL_FPoint *mouse_pos);
 void untrackMouse(Piece fake_PIECE);
 void movePiece(Piece fakePIECE, Tile destCoordinates);
 void movePieceFromPos(Piece fake_PIECE, SDL_FPoint *pos);
-void deletePiece(Piece fakePiece, PieceNode **FakeFamily);
+void deletePiece(Piece fakePiece);
 
-Piece pieceFromTile(Tile dest, PieceNode *pieceFamily); // Checks against Piece coordinate.
-bool TileHasOccupant(Tile dest, PieceNode *pieceFamily);
-void initMove(Piece global_piece, Tile global_dest,
-              bool global_player /*True if white.*/,
-              PieceNode *global_playerFamily, PieceNode *global_opponentFamily);
+TileNode *nodeFromTile(Tile coords, TileNode *light, TileNode *dark);
 
-int finalizeMove(void);
-bool setCheck(void);
+/*Set board*/
 TileNode *setTiles(bool start_Offset);
+PieceNode *setPieces(SDL_Renderer *renderer, bool colour, const char *Path);
+void resetPieces(PieceNode *colour, bool player);
 #endif

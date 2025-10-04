@@ -11,11 +11,13 @@ bool leftMouseHeld = false;
 bool leftMouseRelease = false;
 bool leftMouseclick = false;
 
+bool rightMouseclick = false;
+bool middleClick = false;
+
 bool successfulLaunch = true;
 bool running = true;
 
 bool player = true; // WHITE :D
-
 bool checkStatus;
 
 bool WhiteCheck = false;
@@ -39,9 +41,7 @@ SDL_FPoint *mousepos = NULL;
 
 char moveMadeWhite[40];
 char moveMadeBlack[40];
-
 #pragma endregion Globals
-// FUNCTIONS
 
 // Returns Current FPS Since Launch
 void getFPS(void)
@@ -122,7 +122,6 @@ void launch()
     return;
 }
 
-// CLEANING FUNCTIONS
 #pragma region Cleaning Functions for failed launch
 void launchClean()
 {
@@ -157,6 +156,7 @@ void setup(void)
         return;
     }
 
+    // Tiles
     headLightTile = setTiles(false);
     headDarkTile = setTiles(true);
     if (headDarkTile == NULL || headLightTile == NULL)
@@ -165,250 +165,25 @@ void setup(void)
         accident();
         SDL_Log("Problem with Tiles");
     }
-    // ASSETS
-    char buffer[MAX_ASSET_PATH];
-    int itemcount = 0;
-
-#pragma region Pieces
-    char **pieces = NULL;
-
-    PieceNode *tempPiece;
-    PieceNode *prevPiece = NULL;
-
-#pragma region BLACK
-    blackHeadPiece = SDL_malloc(sizeof(PieceNode));
-    if (blackHeadPiece == NULL)
+    // Pieces
+    whiteHeadPiece = setPieces(renderer, player, WHITE_PIECES_PATH);
+    blackHeadPiece = setPieces(renderer, !player, BLACK_PIECES_PATH);
+    if (blackHeadPiece == NULL || whiteHeadPiece == NULL)
     {
         clean_pieces();
+        accident();
+        SDL_Log("Problem with pieces");
         return;
     }
-    size_t pieceNodeSize = sizeof(PieceNode);
-    tempPiece = blackHeadPiece;
-
-    // BASE VALUES FOR FAILURE
-    tempPiece->next = NULL;
-    tempPiece->prev = prevPiece;
-    tempPiece->appearances = 1;
-    tempPiece->texture = NULL;
-
-    pieces = SDL_GlobDirectory(BLACK_PIECES_PATH, NULL, 0, &itemcount);
-    if (pieces == NULL)
-    {
-        SDL_free(blackHeadPiece);
-        clean_pieces();
-        return;
-    }
-
-    for (int i = 0; i < itemcount; i++)
-    {
-        SDL_snprintf(buffer, sizeof(buffer), "%s/%s", BLACK_PIECES_PATH, pieces[i]);
-        if (SDL_strcmp(pieces[i], BISHOP_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, BISHOP_NO, BISHOP_NAME, BISHOP_X, BLACK_Y) == NULL)
-            {
-                clean_pieces();
-                SDL_free(pieces);
-                freePieces(blackHeadPiece);
-            };
-        }
-        else if (SDL_strcmp(pieces[i], KING_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, KING_NO, KING_NAME, KING_X, BLACK_Y) == NULL)
-            {
-                clean_pieces();
-                SDL_free(pieces);
-                freePieces(blackHeadPiece);
-            }
-        }
-        else if (SDL_strcmp(pieces[i], KNIGHT_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, KNIGHT_NO,
-                              KNIGHT_NAME, KNIGHT_X, BLACK_Y) == NULL)
-            {
-                clean_pieces();
-                SDL_free(pieces);
-                freePieces(blackHeadPiece);
-            }
-        }
-        else if (SDL_strcmp(pieces[i], PAWN_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, PAWN_NO, PAWN_NAME, PAWN_X, BPAWNY) == NULL)
-            {
-                clean_pieces();
-                SDL_free(pieces);
-                freePieces(blackHeadPiece);
-            }
-        }
-        else if (SDL_strcmp(pieces[i], QUEEN_FILE_NAME) == 0)
-        {
-
-            if (makePieceNode(renderer, buffer, tempPiece, QUEEN_NO, QUEEN_NAME, QUEEN_X, BLACK_Y) == NULL)
-            {
-                clean_pieces();
-                SDL_free(pieces);
-                freePieces(blackHeadPiece);
-            }
-        }
-        else if (SDL_strcmp(pieces[i], ROOK_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, ROOK_NO, ROOK_NAME, ROOK_X, BLACK_Y) == NULL)
-            {
-                clean_pieces();
-                SDL_free(pieces);
-                freePieces(blackHeadPiece);
-            }
-        }
-        else
-        {
-            continue;
-        }
-
-        // Previous Piece
-        tempPiece->prev = prevPiece;
-        prevPiece = tempPiece;
-        // Next Piece?
-        if (i == itemcount - 1)
-        {
-            SDL_free(pieces);
-            tempPiece->next = NULL;
-            break;
-        }
-
-        tempPiece->next = SDL_malloc(pieceNodeSize);
-        if (tempPiece->next == NULL)
-        {
-            clean_pieces();
-            SDL_free(pieces);
-            freePieces(blackHeadPiece);
-            return;
-        }
-        tempPiece = tempPiece->next;
-    }
-
-#pragma endregion BLACK
-
-#pragma region WHITE
-    whiteHeadPiece = SDL_malloc(sizeof(PieceNode));
-    prevPiece = NULL;
-    if (whiteHeadPiece == NULL)
-    {
-        clean_pieces();
-        freePieces(blackHeadPiece);
-        return;
-    }
-
-    tempPiece = whiteHeadPiece;
-
-    // BASE VALUES FOR FAILURE
-    tempPiece->next = NULL;
-    tempPiece->prev = prevPiece;
-    tempPiece->appearances = 1;
-    tempPiece->texture = NULL;
-
-    pieces = SDL_GlobDirectory(WHITE_PIECES_PATH, NULL, 0, &itemcount);
-    if (pieces == NULL)
-    {
-        clean_pieces();
-        freePieces(blackHeadPiece);
-        SDL_free(whiteHeadPiece);
-        return;
-    }
-    for (int i = 0; i < itemcount; i++)
-    {
-        SDL_snprintf(buffer, sizeof(buffer), "%s/%s", WHITE_PIECES_PATH, pieces[i]);
-        if (SDL_strcmp(pieces[i], BISHOP_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, BISHOP_NO, BISHOP_NAME, BISHOP_X, WHITE_Y) == NULL)
-            {
-                clean_pieces();
-                freePieces(blackHeadPiece);
-                freePieces(whiteHeadPiece);
-            };
-        }
-        else if (SDL_strcmp(pieces[i], KING_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, KING_NO, KING_NAME, KING_X, WHITE_Y) == NULL)
-            {
-                clean_pieces();
-                freePieces(blackHeadPiece);
-                freePieces(whiteHeadPiece);
-            }
-        }
-        else if (SDL_strcmp(pieces[i], KNIGHT_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, KNIGHT_NO, KNIGHT_NAME, KNIGHT_X, WHITE_Y) == NULL)
-            {
-                clean_pieces();
-                freePieces(blackHeadPiece);
-                freePieces(whiteHeadPiece);
-            }
-        }
-        else if (SDL_strcmp(pieces[i], PAWN_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, PAWN_NO, PAWN_NAME, PAWN_X, WPAWNY) == NULL)
-            {
-                clean_pieces();
-                freePieces(blackHeadPiece);
-                freePieces(whiteHeadPiece);
-            }
-        }
-        else if (SDL_strcmp(pieces[i], QUEEN_FILE_NAME) == 0)
-        {
-
-            if (makePieceNode(renderer, buffer, tempPiece, QUEEN_NO, QUEEN_NAME, QUEEN_X, WHITE_Y) == NULL)
-            {
-                clean_pieces();
-                freePieces(blackHeadPiece);
-                freePieces(whiteHeadPiece);
-            }
-        }
-        else if (SDL_strcmp(pieces[i], ROOK_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, ROOK_NO, ROOK_NAME, ROOK_X, WHITE_Y) == NULL)
-            {
-                clean_pieces();
-                freePieces(blackHeadPiece);
-                freePieces(whiteHeadPiece);
-            }
-        }
-        else
-        {
-            continue;
-        }
-
-        // Previous Piece
-        tempPiece->prev = prevPiece;
-        prevPiece = tempPiece;
-        // Next Piece?
-        if (i == itemcount - 1)
-        {
-            SDL_free(pieces);
-            tempPiece->next = NULL;
-            break;
-        }
-
-        tempPiece->next = SDL_malloc(pieceNodeSize);
-        if (tempPiece->next == NULL)
-        {
-            SDL_free(pieces);
-            freePieces(blackHeadPiece);
-            freePieces(whiteHeadPiece);
-            clean_pieces();
-            return;
-        }
-        tempPiece = tempPiece->next;
-    }
-
-#pragma endregion WHITE
-
-#pragma endregion Pieces
+    playGameStartAudio();
 }
 
 void process_input(void)
 {
     leftMouseRelease = false;
     leftMouseclick = false;
-
+    middleClick = false;
+    rightMouseclick = false;
     SDL_Event event;
     SDL_PollEvent(&event);
     switch (event.type)
@@ -422,7 +197,14 @@ void process_input(void)
             leftMouseclick = true;
             leftMouseHeld = true;
         }
-
+        if (event.button.button == 2)
+        {
+            middleClick = true;
+        }
+        else if (event.button.button == 3)
+        {
+            rightMouseclick = true;
+        }
         break;
     case SDL_EVENT_MOUSE_BUTTON_UP:
         if (event.button.button == 1)
@@ -437,33 +219,40 @@ void process_input(void)
     }
 }
 
-void update(void)
+bool resetGame(void)
 {
-    // // FPS
-    getFPS(); // frames stored in fps variable
-    if (fps < 500 && SDL_GetTicks() > 2000)
+    playGameStartAudio();
+    player = true;
+    resetStorage();
+    resetPieces(whiteHeadPiece, true);
+    resetPieces(blackHeadPiece, false);
+    if (!createTable())
     {
-        SDL_Log("%f fps? You're pc's chopped lil' bro...\n", fps);
+        return false;
     }
-    if (LIMIT_FPS)
-    {
-        SDL_Delay(WAIT_TIME);
-    }
+    return true;
+}
 
-    // UPDATES
+bool update(void)
+{
+    if (middleClick && !resetGame())
+        return false;
+
+    if (LIMIT_FPS)
+        SDL_Delay(WAIT_TIME);
+
     // Cursor Position
     SDL_GetMouseState(&mousepos->x, &mousepos->y);
-
+    Tile mouseTile = TileFromPos(mousepos);
     // Set up for player
-    if (player)
+    playerPieces = player ? &whiteHeadPiece : &blackHeadPiece;
+    opponentPieces = !player ? &whiteHeadPiece : &blackHeadPiece;
+    // Select tile
+    if (rightMouseclick)
     {
-        playerPieces = &whiteHeadPiece;
-        opponentPieces = &blackHeadPiece;
-    }
-    else
-    {
-        playerPieces = &blackHeadPiece;
-        opponentPieces = &whiteHeadPiece;
+        TileNode *selectedTile = nodeFromTile(mouseTile, headLightTile, headDarkTile);
+        if (selectedTile != NULL)
+            selectedTile->selected = !(selectedTile->selected);
     }
 
     // Select piece
@@ -482,12 +271,11 @@ void update(void)
             trackMouse(playerPiece, mousepos);
         }
 
-        // MAKE MOVE
+        // VALIDATE AND MAKE MOVE
         if (leftMouseRelease)
         {
-            Tile mouseTile = TileFromPos(mousepos);
-            initMove(playerPiece, mouseTile, player, *playerPieces, *opponentPieces);
-            int result = finalizeMove();
+            initMove(playerPiece, playerPiece.ptr->pos[playerPiece.index], mouseTile, player, *playerPieces, *opponentPieces);
+            int result = finalizeMove(true);
 
             // VALID MOVE
             int yValueOfPiece = player ? WHITE_Y : BLACK_Y; // For Castling
@@ -497,16 +285,13 @@ void update(void)
             case INVALID: // Invalid move
                 untrackMouse(playerPiece);
                 break;
-
             case VALID: // Move no capture
                 playMoveSound();
                 movePiece(playerPiece, mouseTile);
-
                 break;
-
             case VALID_CAPTURE: // Move + capture
                 playCaptureSound();
-                deletePiece(pieceFromTile(mouseTile, *opponentPieces), opponentPieces);
+                deletePiece(pieceFromTile(mouseTile, *opponentPieces));
                 movePiece(playerPiece, mouseTile);
                 break;
             case KINGSIDE_CASTLING: // Castle KingSide
@@ -523,14 +308,14 @@ void update(void)
                 playCaptureSound();
                 movePiece(playerPiece, mouseTile);
                 Tile niceEn = (Tile){mouseTile.x, mouseTile.y + (player ? -1 : 1)};
-                deletePiece(pieceFromTile(niceEn, *opponentPieces), opponentPieces);
-                SDL_Log("Nice\n\n\n");
+                deletePiece(pieceFromTile(niceEn, *opponentPieces));
+                break;
             default:
-                // SDL_Log("That move has not been set up yet\n");
+                SDL_Log("That move has not been set up yet\n");
                 break;
             }
 
-            if (result)
+            if (result != INVALID)
             {
                 bool checkStatus = setCheck();
                 if (player)
@@ -543,8 +328,6 @@ void update(void)
                     WhiteCheck = checkStatus;
                     BlackCheck = false;
                 }
-                SDL_Log("White : %d", WhiteCheck);
-                SDL_Log("Black : %d\n\n", BlackCheck);
                 // Sfx
                 if (checkStatus)
                 {
@@ -578,28 +361,25 @@ void update(void)
             untrackMouse(opponentPiece);
         }
     }
+
+    return true;
 }
 
+// Returns True if all Items where rendered successfully
 bool render(void)
 {
     // Background
-    if (!SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255))
+    if (!SDL_SetRenderDrawColor(renderer, BACKGROUND_COLOR[0], BACKGROUND_COLOR[1], BACKGROUND_COLOR[2], BACKGROUND_COLOR[3]))
         return false;
     if (!SDL_RenderClear(renderer))
         return false;
 
     // Light Tiles
-    if (!SDL_SetRenderDrawColor(renderer, LIGHT_TILE_COLOR[0], LIGHT_TILE_COLOR[1], LIGHT_TILE_COLOR[2], LIGHT_TILE_COLOR[3]))
-        return false;
-
-    if (!renderTileNodes(renderer, headLightTile))
+    if (!renderTileNodes(renderer, headLightTile, LIGHT_TILE_COLOR))
         return false;
 
     // Dark Tiles
-    if (!SDL_SetRenderDrawColor(renderer, DARK_TILE_COLOR[0], DARK_TILE_COLOR[1], DARK_TILE_COLOR[2], DARK_TILE_COLOR[3]))
-        return false;
-
-    if (!renderTileNodes(renderer, headDarkTile))
+    if (!renderTileNodes(renderer, headDarkTile, DARK_TILE_COLOR))
         return false;
 
     // Black Pieces
@@ -641,7 +421,8 @@ int main()
     while (running)
     {
         process_input();
-        update();
+        if (!update())
+            running = false;
         if (!render())
             running = false;
     }

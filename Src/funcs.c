@@ -1,34 +1,5 @@
 #include "Linkers/funcs.h"
 
-SDL_Texture *maketexture(SDL_Renderer *renderer, const char *path)
-{
-
-    SDL_IOStream *io = SDL_IOFromFile(path, "rb");
-    if (io == NULL)
-    {
-        return NULL;
-    }
-    if (IMG_isSVG(io) != 0)
-    {
-        SDL_Surface *surf = IMG_LoadSizedSVG_IO(io, (int)TILE_WIDTH, (int)TILE_HEIGHT);
-        if (surf == NULL)
-        {
-            SDL_CloseIO(io);
-            return NULL;
-        }
-
-        SDL_Texture *text = SDL_CreateTextureFromSurface(renderer, surf);
-        SDL_DestroySurface(surf);
-        SDL_CloseIO(io);
-        return text;
-    }
-    else
-    {
-        SDL_Texture *text = IMG_LoadTexture_IO(renderer, io, true);
-        return text;
-    }
-}
-
 Tile TileFromPos(SDL_FPoint *pos)
 {
     Tile mousetile = (Tile){pos->x / TILE_WIDTH + 1, Y_TILES - pos->y / TILE_HEIGHT + 1};
@@ -38,95 +9,8 @@ Tile TileFromPos(SDL_FPoint *pos)
 SDL_FRect rectFromTile(Tile cords)
 {
     float tempPosx = (cords.x - 1) * TILE_WIDTH;
-    float tempPosy = (8 - cords.y) * TILE_HEIGHT;
+    float tempPosy = (Y_TILES - cords.y) * TILE_HEIGHT;
     return (SDL_FRect){tempPosx, tempPosy, TILE_WIDTH, TILE_HEIGHT};
-}
-
-PieceNode *makePieceNode(SDL_Renderer *renderer,
-                         char *buffer,
-                         PieceNode *tempPiece,
-                         const int appearances,
-                         const char *name,
-                         const int *x,
-                         const int y)
-{
-    // tempPiece->noInPlay = appearances;
-    tempPiece->appearances = appearances;
-    tempPiece->type = name;
-    Tile *positions = SDL_malloc(appearances * sizeof(Tile));
-    if (positions == NULL)
-    {
-        return NULL;
-    }
-    for (int p = 0; p < appearances; p++)
-    {
-        positions[p] = (Tile){x[p], y};
-    }
-
-    tempPiece->pos = positions;
-    tempPiece->texture = maketexture(renderer, buffer);
-    tempPiece->rect = SDL_malloc(sizeof(SDL_FRect) * tempPiece->appearances);
-    if (tempPiece->texture == NULL)
-    {
-        SDL_free(positions);
-        return NULL;
-    }
-    if (tempPiece->rect == NULL)
-    {
-        SDL_DestroyTexture(tempPiece->texture);
-        SDL_free(positions);
-        return NULL;
-    }
-    for (int k = 0; k < tempPiece->appearances; k++)
-    {
-        tempPiece->rect[k] = rectFromTile(tempPiece->pos[k]);
-    }
-    return tempPiece;
-}
-
-void freePieces(PieceNode *Headnode)
-{
-    PieceNode *Tempnode = Headnode;
-    PieceNode *Nextnode;
-    while (Tempnode != NULL)
-    {
-        Nextnode = Tempnode->next;
-        SDL_free(Tempnode->pos);
-        SDL_free(Tempnode->rect);
-        if (Tempnode->texture != NULL)
-        {
-            SDL_DestroyTexture(Tempnode->texture);
-        }
-        else
-        {
-            SDL_Log("You didn't have a %s? LOL", Tempnode->type);
-        }
-        SDL_free(Tempnode);
-        Tempnode = Nextnode;
-    }
-}
-
-// renders all Pieces
-// Returns true on success and false otherwise
-// Call SDL_GetError for info
-bool renderPieces(SDL_Renderer *renderer, PieceNode *HeadPiece)
-{
-    PieceNode *TempPiece = HeadPiece;
-    while (TempPiece != NULL)
-    {
-        for (int a = 0; a < TempPiece->appearances; a++)
-        {
-            if (TempPiece->texture != NULL && TempPiece->pos[a].x != 0) // Won't render if x coord is 0
-            {
-                if (!SDL_RenderTexture(renderer, TempPiece->texture, NULL, &TempPiece->rect[a]))
-                {
-                    return false;
-                }
-            }
-        }
-        TempPiece = TempPiece->next;
-    }
-    return true;
 }
 
 // {NULL ,-1} if not found
@@ -187,56 +71,28 @@ void movePieceFromPos(Piece fakePIECE, SDL_FPoint *pos)
     movePiece(fakePIECE, TileFromPos(pos));
 }
 
-// Make these linked lists to make this easier;;;
-// Don't make them linked list
-// This is AI slop. I refuse to be judged
-void deletePiece(Piece fakePiece, PieceNode **FakeFamily)
+TileNode *nodeFromTile(Tile coords, TileNode *light, TileNode *dark)
+{
+    TileNode *tempLight = light;
+    TileNode *tempDark = dark;
+    while (tempDark != NULL && tempLight != NULL)
+    {
+        if (tempDark->pos.x == coords.x && tempDark->pos.y == coords.y)
+            return tempDark;
+        if (tempLight->pos.x == coords.x && tempLight->pos.y == coords.y)
+            return tempLight;
+        tempDark = tempDark->next;
+        tempLight = tempLight->next;
+    }
+    return NULL;
+}
+
+// This sends it to the SHADOW_REALM
+void deletePiece(Piece fakePiece)
 {
     if (fakePiece.ptr == NULL)
     {
         return;
     }
-    int index = fakePiece.index;
-    PieceNode *fakeNode = fakePiece.ptr;
-
-    // Shift all pieces after index left by one
-    for (int i = index; i < fakeNode->appearances - 1; i++)
-    {
-        fakeNode->pos[i] = fakeNode->pos[i + 1];
-        fakeNode->rect[i] = fakeNode->rect[i + 1];
-    }
-    // fakeNode->noInPlay--;
-    fakeNode->appearances--;
-    // Reallocate arrays to new size if not empty
-    if (fakeNode->appearances > 0)
-    {
-        Tile *newPos = SDL_realloc(fakeNode->pos, sizeof(Tile) * fakeNode->appearances);
-        SDL_FRect *newRect = SDL_realloc(fakeNode->rect, sizeof(SDL_FRect) * fakeNode->appearances);
-        if (newPos != NULL)
-            fakeNode->pos = newPos;
-        if (newRect != NULL)
-            fakeNode->rect = newRect;
-    }
-    else
-    {
-        // Free Items
-        SDL_free(fakeNode->pos);
-        SDL_free(fakeNode->rect);
-        if (fakeNode->texture != NULL)
-            SDL_DestroyTexture(fakeNode->texture);
-
-        PieceNode *nextNode = fakeNode->next;
-        PieceNode *prevNode = fakeNode->prev;
-
-        // Unlink Node
-        if (nextNode != NULL)
-            nextNode->prev = prevNode;
-        if (prevNode != NULL)
-            prevNode->next = nextNode;
-        else
-            // Node is head**Change stored Head
-            *FakeFamily = nextNode;
-
-        SDL_free(fakeNode);
-    }
+    fakePiece.ptr->pos[fakePiece.index] = SHADOW_REALM;
 }

@@ -2,8 +2,8 @@
 #define CONSTANTS_H
 
 // SCREEN
-#define SCREENWIDTH 600
-#define SCREENHEIGHT 600
+#define SCREENWIDTH 1000
+#define SCREENHEIGHT 1000
 #define X_TILES 8
 #define Y_TILES 8
 
@@ -23,8 +23,8 @@
 #define LIMIT_FPS false
 // PATHS
 
-#define WHITE_PIECES_PATH "../Assets/Visual/Pieces/White/Svgs/Set2"
-#define BLACK_PIECES_PATH "../Assets/Visual/Pieces/Black/Svgs/Set2"
+#define WHITE_PIECES_PATH "../Assets/Visual/Pieces/White"
+#define BLACK_PIECES_PATH "../Assets/Visual/Pieces/Black"
 
 #define SOUNDS_PATH "../Assets/Audio/Sound"
 #define MUSIC_PATH "../Assets/Audio/Music"
@@ -33,8 +33,8 @@
 #define MAX_ASSET_PATH 100
 
 // IMAGE FORMAT
-#define SVG_WIDTH 45
-#define SVG_HEIGHT 45
+#define SVG_WIDTH TILE_WIDTH
+#define SVG_HEIGHT TILE_HEIGHT
 
 // IMAGE FILE NAME
 #define KING_FILE_NAME "king.svg"
@@ -44,19 +44,26 @@
 #define KNIGHT_FILE_NAME "knight.svg"
 #define PAWN_FILE_NAME "pawn.svg"
 
-// SOUNF FILE NAMES
+// SOUND FILE NAMES
 #define CAPTURE_SOUND_FILE_NAME "capture.mp3"
 #define MOVE_SOUND_FILE_NAME "move.mp3"
 #define CASTLE_SOUND_FILE_NAME "castle.mp3"
 #define CHECK_SOUND_FILE_NAME "check.mp3"
+#define ILLEGAL_SOUND_FILE_NAME "illegal.mp3"
+#define LOWTIME_SOUND_FILE_NAME "lowtime.mp3"
+#define PREMOVE_SOUND_FILE_NAME "premove.mp3"
+#define PROMOTE_SOUND_FILE_NAME "promote.mp3"
+#define GAMESTART_SOUND_FILE_NAME "gamestart.mp3"
+#define GAMEEND_SOUND_FILE_NAME "gameend.mp3"
 
 // PIECE NAME
-#define KING_NAME "King"
-#define BISHOP_NAME "Bishop"
-#define QUEEN_NAME "Queen"
-#define ROOK_NAME "Rook"
-#define KNIGHT_NAME "Knight"
-#define PAWN_NAME "Pawn"
+// These are unique identifiers for pieces.
+#define KING_NAME "k"
+#define BISHOP_NAME "b"
+#define QUEEN_NAME "q"
+#define ROOK_NAME "r"
+#define KNIGHT_NAME "n"
+#define PAWN_NAME "p"
 
 // Move Codes
 #define INVALID 0
@@ -65,10 +72,14 @@
 #define KINGSIDE_CASTLING 3
 #define QUEENSIDE_CASTLING 4
 #define ENPASSANT 5
+// DELETE PIECE
+extern const Tile SHADOW_REALM;
 
 // Board Colors
 extern Uint8 LIGHT_TILE_COLOR[];
 extern Uint8 DARK_TILE_COLOR[];
+extern Uint8 SELECTED_TILE_COLOR[];
+extern Uint8 BACKGROUND_COLOR[];
 
 //  XPOSITIONS
 extern const int PAWN_X[];
@@ -77,8 +88,6 @@ extern const int QUEEN_X[];
 extern const int KING_X[];
 extern const int ROOK_X[];
 extern const int KNIGHT_X[];
-
-// CALCULATIONS
 
 // NO OF PIECES
 extern const int KING_NO;
