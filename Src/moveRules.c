@@ -41,7 +41,6 @@ static Piece tmpMovedPiece;
 static Tile tmpOrigTile, tmpDestTile;
 static bool tmpPlayerBool;
 static PieceNode *tmpPlayerFamily, *tmpOpponentFamily;
-
 void saveInit(void)
 {
     tmpMovedPiece = movedPiece;
@@ -79,22 +78,22 @@ void resetStorage(void)
  * true otherwise
  */
 
-bool initMove(Piece globalPiece, Tile globalOrigTile /*It doesn't recalculate without this.*/, Tile globalDest, // Doesn't include check logic///
-              bool globalPlayer /*True if white.*/,
-              PieceNode *globalPlayerFamily, PieceNode *globalOpponentFamily)
+bool initMove(Piece selectedPiece, Tile originalTile /*It doesn't recalculate without this.*/, Tile globalDest, // Doesn't include check logic///
+              bool Currentplayer /*True if white.*/,
+              PieceNode *family, PieceNode *enemy)
 {
-    if (globalPlayerFamily == NULL || globalOpponentFamily == NULL)
+    if (family == NULL || enemy == NULL)
     {
         SDL_Log("One of the piece families is NULL\n");
         return false;
     }
     // Give locals global values.
-    movedPiece = globalPiece;
-    origTile = globalOrigTile;
+    movedPiece = selectedPiece;
+    origTile = originalTile;
     destTile = globalDest;
-    playerBool = globalPlayer;
-    playerFamily = globalPlayerFamily;
-    opponentFamily = globalOpponentFamily;
+    playerBool = Currentplayer;
+    playerFamily = family;
+    opponentFamily = enemy;
     if (movedPiece.ptr == NULL || movedPiece.index < 0 ||
         movedPiece.index >= movedPiece.ptr->appearances)
     {
@@ -111,14 +110,6 @@ bool initMove(Piece globalPiece, Tile globalOrigTile /*It doesn't recalculate wi
     xDisplacement = SDL_abs(xVector); // Take abs
 
     return true;
-}
-
-// Wrapper on SDL_strcmp
-bool match_Piece(Piece test, const char *str2)
-{
-    if (test.ptr == NULL)
-        return false;
-    return SDL_strcmp(test.ptr->type, str2) ? false : true;
 }
 
 // True if you're skipping a piece
@@ -181,7 +172,7 @@ bool validateGeneralMoverules(void)
         return false;
 
     // Only Knight can jump pieces
-    if (!match_Piece(movedPiece, KNIGHT_NAME) && skippingPiece())
+    if (movedPiece.ptr->type != KNIGHT_NAME && skippingPiece())
         return false;
 
     if (TileHasOccupant(destTile, playerFamily))
@@ -304,39 +295,28 @@ int validateQueenMove(void)
 }
 #pragma endregion
 
-int performValidation(void)
+int performValidation()
 {
     if (!validateGeneralMoverules())
         return INVALID;
-
-    // Pawn
-    if (match_Piece(movedPiece, PAWN_NAME))
+    switch (movedPiece.ptr->type)
+    {
+    case PAWN_NAME:
         return validatePawnMove();
-
-    // KING
-    if (match_Piece(movedPiece, KING_NAME))
+    case KING_NAME:
         return validateKingMove();
-
-    // ROOK
-    if (match_Piece(movedPiece, ROOK_NAME))
+    case ROOK_NAME:
         return validateRookMove();
-
-    // BISHOP
-    if (match_Piece(movedPiece, BISHOP_NAME))
-        return validateBishopMove();
-
-    // KNIGHT
-    if (match_Piece(movedPiece, KNIGHT_NAME))
-        return validateKnightMove();
-
-    // QUEEN
-    if (match_Piece(movedPiece, QUEEN_NAME))
+    case QUEEN_NAME:
         return validateQueenMove();
-
-    // To handle weird piece names
-    return INVALID;
+    case BISHOP_NAME:
+        return validateBishopMove();
+    case KNIGHT_NAME:
+        return validateKnightMove();
+    default:
+        return INVALID;
+    }
 }
-
 /**
  * Moves Piece to destination location.
  * Free is called when calling unfakemove()
@@ -497,32 +477,33 @@ bool setCheck(void)
 void updateStorage(void)
 {
     /**Update stored values when move is valid */
-    if (match_Piece(movedPiece, ROOK_NAME))
+    switch (movedPiece.ptr->type)
     {
+    case ROOK_NAME:
         // SET SPECIFIC CASTLING SIDE TO FALSE
         int rookYval = playerBool ? WHITE_Y : BLACK_Y;
         if (origTile.y == rookYval)
         {
-            if (origTile.x == ROOK_X[0]) /*Queenside*/
+            if (playerCastling->queenside && origTile.x == ROOK_X[0]) /*Queenside*/
                 playerCastling->queenside = false;
-            else if (origTile.x == ROOK_X[1])
+            else if (playerCastling->kingside && origTile.x == ROOK_X[1])
                 playerCastling->kingside = false;
+            else
+                break;
         }
-    }
-
-    else if (match_Piece(movedPiece, PAWN_NAME))
-    {
+        break;
+    case PAWN_NAME:
         if (yDisplacement == 2)
-        {
             enPawn = movedPiece;
-        }
-    }
-
-    else if (match_Piece(movedPiece, KING_NAME))
-    {
+        break;
+    case KING_NAME:
         tmpKingsTile = destTile;
         *playerKingsTile = destTile;
-        *playerCastling = (CastlingOptions){false, false};
+        if (playerCastling->queenside || playerCastling->kingside)
+            *playerCastling = (CastlingOptions){false, false};
+        break;
+    default:
+        break;
     }
 }
 
@@ -538,7 +519,11 @@ void enpassantTimer(void)
         enpassable = true;
 }
 
-// True if castling path crosses a checked square
+/**
+ * True if castling path crosses a checked square
+ * \param bot Whether the bot is validating or not.
+ * Set false only for the bot.
+ */
 bool castleThroughCheck(int Originalvalid)
 {
     int dir;
@@ -568,6 +553,14 @@ bool castleThroughCheck(int Originalvalid)
 /**
  * CHESS RULES
  * It runs base of the most recently supplied values.
+ * \param updateState determines whether the validation storage should be updated.
+ * \param causeCheck changes it's value to whether move causes check. Does nothing if NULL.
+ * i.e Whether there the move will be made on the board or not.
+ * If set to false the board state will not change on the validation end.
+ * Don't change state on front-end if this is set to false.
+ * \param bot Whether the bot is validating or not.
+ * Set true only for the bot.
+ * The level of validation performed is less thorough when true.
  * \returns
  * INVALID for invalid move.
  * VALID for no capture.
@@ -575,11 +568,7 @@ bool castleThroughCheck(int Originalvalid)
  * KINGSIDE_CASTLING for castling kingSide.
  * QUEENSIDE_CASTLING for castling queensSide.
  * ENPASSANT for enpassant
- * \param updateState determines whether the validation storage should be updated.
- * \param causeCheck changes it's value to whether move causes check. Does nothing if NULL.
- * i.e Whether there the move will be made on the board or not.
- * If set to false the board state will not change on the validation end.
- * Don't change state on front-end if this is set to false.*/
+ * */
 int finalizeMove(bool updateState, bool *causeCheck)
 {
     saveInit();
@@ -598,7 +587,7 @@ int finalizeMove(bool updateState, bool *causeCheck)
     bool jumpedCheck = castleThroughCheck(calculatedvalid);
     if (badCheck || jumpedCheck)
     {
-        playIllegalSound();
+        // playIllegalSound();
         return INVALID;
     }
     if (updateState)

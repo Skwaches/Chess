@@ -1,6 +1,6 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
-
+#include "classes.h"
 // SCREEN
 #define SCREENWIDTH 1000
 #define SCREENHEIGHT 1000
@@ -33,7 +33,8 @@
 #define MAX_ASSET_PATH 100
 #define MAX_MOVE_SYNTAX 40
 #define MAX_COMMAND_LENGTH 128
-
+#define MAX_POSSIBLE_MOVES (int)(X_TILES * Y_TILES) / 2
+#define MAX_TOTAL_POSSIBLE_MOVES 128
 // IMAGE FORMAT
 #define SVG_WIDTH TILE_WIDTH
 #define SVG_HEIGHT TILE_HEIGHT
@@ -60,12 +61,12 @@
 
 // PIECE NAME
 // These are unique identifiers for pieces.
-#define KING_NAME "K"
-#define BISHOP_NAME "B"
-#define QUEEN_NAME "Q"
-#define ROOK_NAME "R"
-#define KNIGHT_NAME "N"
-#define PAWN_NAME ""
+#define BISHOP_NAME 'B'
+#define QUEEN_NAME 'Q'
+#define KING_NAME 'K'
+#define ROOK_NAME 'R'
+#define KNIGHT_NAME 'N'
+#define PAWN_NAME '\0'
 
 // Move Codes
 #define INVALID 0
@@ -81,18 +82,18 @@
 extern const Tile SHADOW_REALM;
 
 // Board Colors
-extern Uint8 LIGHT_TILE_COLOR[];
-extern Uint8 DARK_TILE_COLOR[];
-extern Uint8 SELECTED_TILE_COLOR[];
-extern Uint8 BACKGROUND_COLOR[];
+#define LIGHT_TILE_COLOR (SDL_Color){200, 160, 190, 255}
+#define DARK_TILE_COLOR (SDL_Color){130, 120, 150, 255}
+#define SELECTED_TILE_COLOR (SDL_Color){190, 90, 9, 255}
+#define BACKGROUND_COLOR (SDL_Color){10, 10, 10, 255}
 
 //  XPOSITIONS
-extern const int PAWN_X[];
-extern const int BISHOP_X[];
-extern const int QUEEN_X[];
-extern const int KING_X[];
-extern const int ROOK_X[];
-extern const int KNIGHT_X[];
+extern int PAWN_X[];
+extern int BISHOP_X[];
+extern int QUEEN_X[];
+extern int KING_X[];
+extern int ROOK_X[];
+extern int KNIGHT_X[];
 
 // NO OF PIECES
 extern const int KING_NO;

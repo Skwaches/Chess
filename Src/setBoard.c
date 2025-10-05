@@ -55,17 +55,29 @@ TileNode *setTiles(bool startOffset)
     return headTile;
 }
 
+bool setRenderColor(SDL_Renderer *renderer, SDL_Color color)
+{
+    return SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+}
+
+void unselectAll(TileNode *family, TileNode *opp)
+{
+    for (TileNode *tempHead = family; tempHead; tempHead = tempHead->next)
+        tempHead->selected = false;
+    for (TileNode *tempHead = opp; tempHead; tempHead = tempHead->next)
+        tempHead->selected = false;
+}
 // renders TileNode objects connected to the given pointer
 // Returns true on success and false otherwise
 // Call SDL_GetError for info
-bool renderTileNodes(SDL_Renderer *renderer, TileNode *HeadTile, Uint8 *colors)
+bool renderTileNodes(SDL_Renderer *renderer, TileNode *HeadTile, SDL_Color colors)
 {
     TileNode *TempTile = HeadTile;
-    Uint8 *colorToUse;
+    SDL_Color colorToUse;
     while (TempTile != NULL)
     {
         colorToUse = TempTile->selected ? SELECTED_TILE_COLOR : colors;
-        if (!SDL_SetRenderDrawColor(renderer, colorToUse[0], colorToUse[1], colorToUse[2], colorToUse[3]))
+        if (!SDL_SetRenderDrawColor(renderer, colorToUse.r, colorToUse.b, colorToUse.g, colorToUse.a))
             return false;
         if (!SDL_RenderFillRect(renderer, &TempTile->rect))
         {
@@ -118,7 +130,7 @@ PieceNode *makePieceNode(SDL_Renderer *renderer,
                          char *buffer,
                          PieceNode *tempPiece,
                          const int appearances,
-                         const char *name,
+                         const char name,
                          const int *x,
                          const int y)
 {
@@ -314,73 +326,53 @@ bool renderPieces(SDL_Renderer *renderer, PieceNode *HeadPiece)
     return true;
 }
 
-void redrawPiece(PieceNode *colour)
+void redrawFamily(PieceNode *family)
 {
-    PieceNode *header = colour;
-    Piece tmpPiece;
-    while (header != NULL)
-    {
+    for (PieceNode *header = family; header; header = header->next)
         for (int p = 0; p < header->appearances; p++)
         {
-            tmpPiece = (Piece){header, p};
+            Piece tmpPiece = {header, p};
             untrackMouse(tmpPiece);
         }
-        header = header->next;
-    }
 }
 
 // Sets the piece to the original position.
-void resetPieces(PieceNode *colour, bool player)
+void resetPieces(PieceNode *family, bool player)
 {
-    PieceNode *Head = colour;
     const int yVal = player ? WHITE_Y : BLACK_Y;
     const int pVal = player ? WPAWNY : BPAWNY;
-    while (Head != NULL)
+    int *x_Vals;
+    int sel_Y;
+    for (PieceNode *Head = family; Head; Head = Head->next)
     {
-        if (SDL_strcmp(Head->type, PAWN_NAME) == 0)
+        sel_Y = yVal;
+        switch (Head->type)
         {
-            for (int p = 0; p < Head->appearances; p++)
-            {
-                Head->pos[p] = (Tile){PAWN_X[p], pVal};
-            }
+        case PAWN_NAME:
+            x_Vals = PAWN_X;
+            sel_Y = pVal;
+            break;
+        case KING_NAME:
+            x_Vals = KING_X;
+            break;
+        case QUEEN_NAME:
+            x_Vals = QUEEN_X;
+            break;
+        case ROOK_NAME:
+            x_Vals = ROOK_X;
+            break;
+        case BISHOP_NAME:
+            x_Vals = BISHOP_X;
+            break;
+        case KNIGHT_NAME:
+            x_Vals = KNIGHT_X;
+            break;
+        default:
+            SDL_Log("Unknown Piece");
+            break;
         }
-        else if (SDL_strcmp(Head->type, ROOK_NAME) == 0)
-        {
-            for (int p = 0; p < Head->appearances; p++)
-            {
-                Head->pos[p] = (Tile){ROOK_X[p], yVal};
-            }
-        }
-        else if (SDL_strcmp(Head->type, KNIGHT_NAME) == 0)
-        {
-            for (int p = 0; p < Head->appearances; p++)
-            {
-                Head->pos[p] = (Tile){KNIGHT_X[p], yVal};
-            }
-        }
-        else if (SDL_strcmp(Head->type, BISHOP_NAME) == 0)
-        {
-            for (int p = 0; p < Head->appearances; p++)
-            {
-                Head->pos[p] = (Tile){BISHOP_X[p], yVal};
-            }
-        }
-        else if (SDL_strcmp(Head->type, KING_NAME) == 0)
-        {
-            for (int p = 0; p < Head->appearances; p++)
-            {
-                Head->pos[p] = (Tile){KING_X[p], yVal};
-            }
-        }
-        else if (SDL_strcmp(Head->type, QUEEN_NAME) == 0)
-        {
-            for (int p = 0; p < Head->appearances; p++)
-            {
-                Head->pos[p] = (Tile){QUEEN_X[p], yVal};
-            }
-        }
-
-        Head = Head->next;
+        for (int p = 0; p < Head->appearances; p++)
+            Head->pos[p] = (Tile){x_Vals[p], sel_Y};
+        redrawFamily(family);
     }
-    redrawPiece(colour);
 }

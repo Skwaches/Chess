@@ -5,6 +5,7 @@
 
 static MIX_Mixer *ChessMixer;
 static MIX_Track *sfxTrack;
+static MIX_Track *otherTrack;
 static MIX_Audio *captureAudio,
     *moveAudio, *castleAudio,
     *checkAudio, *illegalAudio,
@@ -86,7 +87,8 @@ bool Init_Audio(void)
         return false;
     }
     sfxTrack = MIX_CreateTrack(ChessMixer);
-    if (sfxTrack == NULL)
+    otherTrack = MIX_CreateTrack(ChessMixer);
+    if (!sfxTrack || !otherTrack)
     {
         SDL_Log("Sound Effects Error : %s\n", SDL_GetError());
         MIX_DestroyMixer(ChessMixer);
@@ -103,14 +105,14 @@ bool Init_Audio(void)
 }
 
 // Returns true for successful play
-bool playSound(MIX_Audio *sound)
+bool playSound(MIX_Audio *sound, MIX_Track *sfTrack)
 {
-    if (!MIX_SetTrackAudio(sfxTrack, sound))
+    if (!MIX_SetTrackAudio(sfTrack, sound))
     {
         SDL_Log("Error Playing :%s\n", SDL_GetError());
         return false;
     }
-    if (!MIX_PlayTrack(sfxTrack, 0))
+    if (!MIX_PlayTrack(sfTrack, 0))
     {
         SDL_Log("Error Playing :%s\n", SDL_GetError());
         return false;
@@ -122,7 +124,7 @@ bool playSound(MIX_Audio *sound)
 // Returns true for successful play
 void playMoveSound(void)
 {
-    if (!playSound(moveAudio))
+    if (!playSound(moveAudio, sfxTrack))
     {
         SDL_Log("Something is wrong with the Move sound\n");
     }
@@ -130,7 +132,7 @@ void playMoveSound(void)
 }
 void playCaptureSound(void)
 {
-    if (!playSound(captureAudio))
+    if (!playSound(captureAudio, sfxTrack))
     {
         SDL_Log("Something is wrong with the Capture sound\n");
     }
@@ -138,7 +140,7 @@ void playCaptureSound(void)
 }
 void playCastleSound(void)
 {
-    if (!playSound(castleAudio))
+    if (!playSound(castleAudio, sfxTrack))
     {
         SDL_Log("Something is wrong with the Castle sound\n");
     }
@@ -146,7 +148,7 @@ void playCastleSound(void)
 }
 void playCheckSound(void)
 {
-    if (!playSound(checkAudio))
+    if (!playSound(checkAudio, sfxTrack))
     {
         SDL_Log("Something is wrong with the Check sound\n");
     }
@@ -154,7 +156,7 @@ void playCheckSound(void)
 }
 void playIllegalSound(void)
 {
-    if (!playSound(illegalAudio))
+    if (!playSound(illegalAudio, sfxTrack))
     {
         SDL_Log("Something is wrong with the Check sound\n");
     }
@@ -162,7 +164,7 @@ void playIllegalSound(void)
 }
 void playLowTimeAudio(void)
 {
-    if (!playSound(lowtimeAudio))
+    if (!playSound(lowtimeAudio, sfxTrack))
     {
         SDL_Log("Something is wrong with the Low Time sound\n");
     }
@@ -170,7 +172,7 @@ void playLowTimeAudio(void)
 }
 void playPremoveAudio(void)
 {
-    if (!playSound(premoveAudio))
+    if (!playSound(premoveAudio, sfxTrack))
     {
         SDL_Log("Something is wrong with the Premove sound\n");
     }
@@ -178,7 +180,7 @@ void playPremoveAudio(void)
 }
 void playPromoteAudio(void)
 {
-    if (!playSound(promoteAudio))
+    if (!playSound(promoteAudio, sfxTrack))
     {
         SDL_Log("Something is wrong with the Promote sound\n");
     }
@@ -186,7 +188,7 @@ void playPromoteAudio(void)
 }
 void playGameStartAudio(void)
 {
-    if (!playSound(gameStartAudio))
+    if (!playSound(gameStartAudio, otherTrack))
     {
         SDL_Log("Something is wrong with the game start sound\n");
     }
@@ -194,7 +196,7 @@ void playGameStartAudio(void)
 }
 void playGameEndAudio(void)
 {
-    if (!playSound(gameEndAudio))
+    if (!playSound(gameEndAudio, otherTrack))
     {
         SDL_Log("Something is wrong with the game end sound\n");
     }

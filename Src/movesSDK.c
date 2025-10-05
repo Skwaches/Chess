@@ -146,13 +146,13 @@ int realX(char letter)
     }
 }
 
-bool recordMovesyntax(Piece peace, Tile destTile, int result, bool check)
+bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile, int result, bool check, bool mate)
 {
     char moveMade[MAX_MOVE_SYNTAX];
-    Tile origTile = peace.ptr->pos[peace.index];
+    Tile origTile = originalTile;
     bool capture = (result == VALID_CAPTURE || result == ENPASSANT || result == PROMOTION_CAPTURE);
 
-    const char *pieceName = peace.ptr->type;
+    const char pieceName = peace.ptr->type;
     char origFile = '\0';
     char origRank = '\0';
 
@@ -164,7 +164,8 @@ bool recordMovesyntax(Piece peace, Tile destTile, int result, bool check)
     char promotion = '\0';
     char promoRes = '\0';
 
-    char checkive = check ? '+' : '\0';
+    char materive = mate ? '#' : '\0';
+    char checkive = (!mate && check) ? '+' : '\0';
 
     switch (result)
     {
@@ -175,12 +176,12 @@ bool recordMovesyntax(Piece peace, Tile destTile, int result, bool check)
         SDL_snprintf(moveMade, sizeof(moveMade), "0-0-0");
         break;
     default:
-        SDL_snprintf(moveMade, sizeof(moveMade), "%s", pieceName);
+        SDL_snprintf(moveMade, sizeof(moveMade), "%c", pieceName);
         destFile = chessX(destTile.x);
         destRank = '0' + destTile.y;
-        if (SDL_strcmp(pieceName, KING_NAME) == 0)
+        if (pieceName == KING_NAME)
             break;
-        if (SDL_strcmp(pieceName, PAWN_NAME) == 0)
+        if (pieceName == PAWN_NAME)
         {
             if (capture)
                 origFile = chessX(origTile.x);
@@ -213,7 +214,8 @@ bool recordMovesyntax(Piece peace, Tile destTile, int result, bool check)
         moveMade[currIndex++] = promoRes;
     if (checkive)
         moveMade[currIndex++] = checkive;
-
+    if (materive)
+        moveMade[currIndex++] = materive;
     moveMade[currIndex] = '\0';
     return recordMove(moveMade);
 }

@@ -4,12 +4,9 @@
 // Moves
 Piece pieceFromTile(Tile dest, PieceNode *pieceFamily); // Checks against Piece coordinate.
 bool TileHasOccupant(Tile dest, PieceNode *pieceFamily);
-bool initMove(Piece globalPiece, Tile globalOrigTile, Tile globalDest, // Doesn't include check logic///
-              bool globalPlayer /*True if white.*/,
-              PieceNode *globalPlayerFamily, PieceNode *globalOpponentFamily);
-int performValidation();
-bool match_Piece(Piece test, const char *str2);
-
+bool initMove(Piece selectedPiece, Tile originalTile /*It doesn't recalculate without this.*/, Tile globalDest, // Doesn't include check logic///
+              bool Currentplayer /*True if white.*/,
+              PieceNode *family, PieceNode *enemy);
 void resetStorage(void);
 Tile *fakeMove(Piece piece, Tile dest);
 Tile *fakeDelete(Piece piece);

@@ -18,7 +18,7 @@ typedef struct TileNode
 
 typedef struct PieceNode
 {
-    const char *type;
+    char type;
     int appearances;
     Tile *pos;
     SDL_FRect *rect;
