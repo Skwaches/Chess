@@ -18,8 +18,7 @@ void freePieces(PieceNode *Headnode);
 void freeTileNodes(TileNode *HeadNode);
 bool renderPieces(SDL_Renderer *renderer, PieceNode *HeadPiece);
 bool renderTileNodes(SDL_Renderer *renderer, TileNode *HeadTile, Uint8 *colors);
-char chessX(int number);
-int realX(char letter);
+
 Piece pieceFromPos(PieceNode *HeadPiece, SDL_FPoint *pos); // Checks against Pieces rect ie. where it is visually.
 SDL_FRect centerRectAroundPos(SDL_FPoint *pos);
 

@@ -31,6 +31,8 @@
 
 #define MAX_NAME_LENGTH 10
 #define MAX_ASSET_PATH 100
+#define MAX_MOVE_SYNTAX 40
+#define MAX_COMMAND_LENGTH 128
 
 // IMAGE FORMAT
 #define SVG_WIDTH TILE_WIDTH
@@ -58,12 +60,12 @@
 
 // PIECE NAME
 // These are unique identifiers for pieces.
-#define KING_NAME "k"
-#define BISHOP_NAME "b"
-#define QUEEN_NAME "q"
-#define ROOK_NAME "r"
-#define KNIGHT_NAME "n"
-#define PAWN_NAME "p"
+#define KING_NAME "K"
+#define BISHOP_NAME "B"
+#define QUEEN_NAME "Q"
+#define ROOK_NAME "R"
+#define KNIGHT_NAME "N"
+#define PAWN_NAME ""
 
 // Move Codes
 #define INVALID 0
@@ -72,6 +74,9 @@
 #define KINGSIDE_CASTLING 3
 #define QUEENSIDE_CASTLING 4
 #define ENPASSANT 5
+#define PROMOTION 6
+#define PROMOTION_CAPTURE 7
+
 // DELETE PIECE
 extern const Tile SHADOW_REALM;
 

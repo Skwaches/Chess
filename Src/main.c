@@ -39,8 +39,8 @@ PieceNode *whiteHeadPiece = NULL;
 
 SDL_FPoint *mousepos = NULL;
 
-char moveMadeWhite[40];
-char moveMadeBlack[40];
+char moveMade[MAX_MOVE_SYNTAX];
+
 #pragma endregion Globals
 
 // Returns Current FPS Since Launch
@@ -247,6 +247,7 @@ bool update(void)
     // Set up for player
     playerPieces = player ? &whiteHeadPiece : &blackHeadPiece;
     opponentPieces = !player ? &whiteHeadPiece : &blackHeadPiece;
+
     // Select tile
     if (rightMouseclick)
     {
@@ -267,45 +268,45 @@ bool update(void)
     {
         // TRACKMOUSE
         if (leftMouseHeld)
-        {
             trackMouse(playerPiece, mousepos);
-        }
 
         // VALIDATE AND MAKE MOVE
-        if (leftMouseRelease)
+        else if (leftMouseRelease)
         {
-            initMove(playerPiece, playerPiece.ptr->pos[playerPiece.index], mouseTile, player, *playerPieces, *opponentPieces);
-            int result = finalizeMove(true);
-
-            // VALID MOVE
-            int yValueOfPiece = player ? WHITE_Y : BLACK_Y; // For Castling
-
+            Tile originalTile = playerPiece.ptr->pos[playerPiece.index];
+            initMove(playerPiece, originalTile, mouseTile, player, *playerPieces, *opponentPieces);
+            int result = finalizeMove(true, &checkStatus);
+            if (result == INVALID)
+            {
+                untrackMouse(playerPiece);
+                return true;
+            }
+            WhiteCheck = player ? false : checkStatus;
+            BlackCheck = !player ? false : checkStatus;
+            playRightSound(checkStatus, result);
+            recordMovesyntax(playerPiece, mouseTile, result, checkStatus);
+            int yValueOfPiece = player ? WHITE_Y : BLACK_Y;
+            /*Handle result*/
             switch (result)
             {
-            case INVALID: // Invalid move
-                untrackMouse(playerPiece);
-                break;
             case VALID: // Move no capture
-                playMoveSound();
                 movePiece(playerPiece, mouseTile);
                 break;
             case VALID_CAPTURE: // Move + capture
-                playCaptureSound();
                 deletePiece(pieceFromTile(mouseTile, *opponentPieces));
                 movePiece(playerPiece, mouseTile);
                 break;
             case KINGSIDE_CASTLING: // Castle KingSide
-                playCastleSound();
                 movePiece(playerPiece, mouseTile);
-                movePiece(pieceFromTile((Tile){ROOK_X[1], yValueOfPiece}, *playerPieces), (Tile){6, yValueOfPiece});
+                movePiece(pieceFromTile((Tile){ROOK_X[1], yValueOfPiece}, *playerPieces),
+                          (Tile){6, yValueOfPiece});
                 break;
             case QUEENSIDE_CASTLING: // Castle QueenSide
-                playCastleSound();
-                movePieceFromPos(playerPiece, mousepos);
-                movePiece(pieceFromTile((Tile){ROOK_X[0], yValueOfPiece}, *playerPieces), (Tile){4, yValueOfPiece});
+                movePiece(playerPiece, mouseTile);
+                movePiece(pieceFromTile((Tile){ROOK_X[0], yValueOfPiece}, *playerPieces),
+                          (Tile){4, yValueOfPiece});
                 break;
             case ENPASSANT: // enpassant
-                playCaptureSound();
                 movePiece(playerPiece, mouseTile);
                 Tile niceEn = (Tile){mouseTile.x, mouseTile.y + (player ? -1 : 1)};
                 deletePiece(pieceFromTile(niceEn, *opponentPieces));
@@ -314,38 +315,7 @@ bool update(void)
                 SDL_Log("That move has not been set up yet\n");
                 break;
             }
-
-            if (result != INVALID)
-            {
-                bool checkStatus = setCheck();
-                if (player)
-                {
-                    BlackCheck = checkStatus;
-                    WhiteCheck = false;
-                }
-                else
-                {
-                    WhiteCheck = checkStatus;
-                    BlackCheck = false;
-                }
-                // Sfx
-                if (checkStatus)
-                {
-                    playCheckSound();
-                }
-
-                player = !player;
-                // RECORDING MOVE
-                if (player)
-                {
-                    SDL_snprintf(moveMadeWhite, sizeof(moveMadeWhite), "%s to (%c%d)", playerPiece.ptr->type, chessX(mouseTile.x), mouseTile.y);
-                }
-                else
-                {
-                    SDL_snprintf(moveMadeBlack, sizeof(moveMadeBlack), "%s to (%c%d)", playerPiece.ptr->type, chessX(mouseTile.x), mouseTile.y);
-                    recordMove(moveMadeWhite, moveMadeBlack);
-                }
-            }
+            player = !player;
         }
     }
 
@@ -353,13 +323,9 @@ bool update(void)
     else if (opponentPiece.ptr != NULL)
     {
         if (leftMouseHeld)
-        {
             trackMouse(opponentPiece, mousepos);
-        }
-        if (leftMouseRelease)
-        {
+        else if (leftMouseRelease)
             untrackMouse(opponentPiece);
-        }
     }
 
     return true;

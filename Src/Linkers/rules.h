@@ -14,6 +14,6 @@ void resetStorage(void);
 Tile *fakeMove(Piece piece, Tile dest);
 Tile *fakeDelete(Piece piece);
 void unfakeMove(Piece piece, Tile *tmpHolder);
-int finalizeMove(bool updateState);
+int finalizeMove(bool updateState, bool *causeCheck);
 bool setCheck(void);
 #endif

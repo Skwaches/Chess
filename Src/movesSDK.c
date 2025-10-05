@@ -1,9 +1,9 @@
 #include <sqlite3.h>
 #include <SDL3/SDL.h>
+#include "Linkers/funcs.h"
 #include "Linkers/movesSDK.h"
-
 // EXCLUSIVE TO THIS FILE
-static sqlite3 *DATABASE = NULL; // Creates a static memory address for the object.
+static sqlite3 *DATABASE = NULL;
 static unsigned int GAMENUMBER = 0;
 static char *errorMessage = NULL;
 static sqlite3_stmt *statement;
@@ -23,20 +23,15 @@ bool openDataBase(void)
 
     sqlite3_prepare_v2(DATABASE, command, -1, &statement, 0);
     if (sqlite3_step(statement) == SQLITE_ROW)
-    {
         GAMENUMBER = sqlite3_column_int(statement, 0);
-    }
     sqlite3_finalize(statement);
-
-    // SDL_Log("DataBase Opened");
     return true;
 }
 
 void closeDataBase(void)
 {
     sqlite3_close(DATABASE);
-    // SDL_Log("DataBase Closed");
-    DATABASE = NULL; // AVOID HANGING POINTERS;
+    DATABASE = NULL;
 }
 
 bool createTable(void)
@@ -45,7 +40,7 @@ bool createTable(void)
     char command[56 + 1 + 10];
     // size of command=56 + NULL terminator and 10 digits from GAMENUMBER;
     // max of 10^10-1 for GAMENUMBER which is pretty damn big;
-    SDL_snprintf(command, sizeof(command), "CREATE TABLE IF NOT EXISTS [%d](White TEXT,Black TEXT);", GAMENUMBER);
+    SDL_snprintf(command, sizeof(command), "CREATE TABLE IF NOT EXISTS [%d](Moves);", GAMENUMBER);
     if (sqlite3_exec(DATABASE, command, 0, 0, &errorMessage) != SQLITE_OK)
     {
         SDL_Log("SQL ERROR : %s", errorMessage);
@@ -56,10 +51,10 @@ bool createTable(void)
     return true;
 }
 
-bool recordMove(const char *moveWhite, const char *moveBlack)
+bool recordMove(const char *move)
 {
-    char command[128];
-    SDL_snprintf(command, sizeof(command), "INSERT INTO [%d](White,Black) VALUES(?,?)", GAMENUMBER);
+    char command[MAX_COMMAND_LENGTH];
+    SDL_snprintf(command, sizeof(command), "INSERT INTO [%d](Moves) VALUES(?)", GAMENUMBER);
     // Prepare statement
     if (sqlite3_prepare_v2(DATABASE, command, -1, &statement, 0) != SQLITE_OK)
     {
@@ -68,8 +63,7 @@ bool recordMove(const char *moveWhite, const char *moveBlack)
     }
 
     // Bind Value
-    sqlite3_bind_text(statement, 1, moveWhite, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 2, moveBlack, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(statement, 1, move, -1, SQLITE_STATIC);
     // Execute
     if (sqlite3_step(statement) != SQLITE_DONE)
     {
@@ -77,10 +71,10 @@ bool recordMove(const char *moveWhite, const char *moveBlack)
         sqlite3_finalize(statement);
         return false;
     }
-    // SDL_Log("Move recorded: %s, %s", moveWhite, moveBlack);
     sqlite3_finalize(statement);
     return true;
 }
+
 // Invalid returns i
 char chessX(int number)
 {
@@ -150,4 +144,76 @@ int realX(char letter)
         return 0;
         break;
     }
+}
+
+bool recordMovesyntax(Piece peace, Tile destTile, int result, bool check)
+{
+    char moveMade[MAX_MOVE_SYNTAX];
+    Tile origTile = peace.ptr->pos[peace.index];
+    bool capture = (result == VALID_CAPTURE || result == ENPASSANT || result == PROMOTION_CAPTURE);
+
+    const char *pieceName = peace.ptr->type;
+    char origFile = '\0';
+    char origRank = '\0';
+
+    char captiver = capture ? 'x' : '\0';
+
+    char destFile = '\0';
+    char destRank = '\0';
+
+    char promotion = '\0';
+    char promoRes = '\0';
+
+    char checkive = check ? '+' : '\0';
+
+    switch (result)
+    {
+    case KINGSIDE_CASTLING:
+        SDL_snprintf(moveMade, sizeof(moveMade), "0-0");
+        break;
+    case QUEENSIDE_CASTLING:
+        SDL_snprintf(moveMade, sizeof(moveMade), "0-0-0");
+        break;
+    default:
+        SDL_snprintf(moveMade, sizeof(moveMade), "%s", pieceName);
+        destFile = chessX(destTile.x);
+        destRank = '0' + destTile.y;
+        if (SDL_strcmp(pieceName, KING_NAME) == 0)
+            break;
+        if (SDL_strcmp(pieceName, PAWN_NAME) == 0)
+        {
+            if (capture)
+                origFile = chessX(origTile.x);
+            if (result == PROMOTION)
+            {
+                promotion = '=';
+                promoRes = 'Q';
+            }
+            break;
+        }
+
+        origFile = chessX(origTile.x);
+        origRank = '0' + origTile.y;
+    }
+    /*Build move.*/
+    int currIndex = SDL_strlen(moveMade);
+    if (origFile)
+        moveMade[currIndex++] = origFile;
+    if (origRank)
+        moveMade[currIndex++] = origRank;
+    if (captiver)
+        moveMade[currIndex++] = captiver;
+    if (destFile)
+        moveMade[currIndex++] = destFile;
+    if (destRank)
+        moveMade[currIndex++] = destRank;
+    if (promotion)
+        moveMade[currIndex++] = promotion;
+    if (promoRes)
+        moveMade[currIndex++] = promoRes;
+    if (checkive)
+        moveMade[currIndex++] = checkive;
+
+    moveMade[currIndex] = '\0';
+    return recordMove(moveMade);
 }

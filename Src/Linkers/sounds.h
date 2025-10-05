@@ -12,6 +12,7 @@ void playPremoveAudio(void);
 void playPromoteAudio(void);
 void playGameStartAudio(void);
 void playGameEndAudio(void);
+void playRightSound(bool checkStatus, int result);
 void cleanAudio(void);
 
 #endif

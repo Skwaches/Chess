@@ -12,6 +12,7 @@ static MIX_Audio *captureAudio,
     *gameStartAudio, *gameEndAudio;
 char **soundEffects;
 
+/**Returns false only if an error occured*/
 bool loadSound(char *soundEffect, const char *fileName, MIX_Audio **soundVar)
 {
     if (SDL_strcmp(soundEffect, fileName))
@@ -200,6 +201,20 @@ void playGameEndAudio(void)
     return;
 }
 
+void playRightSound(bool checkStatus, int result)
+{
+    if (result == INVALID)
+        return;
+    /*Sounds*/
+    if (checkStatus)
+        playCheckSound();
+    else if (result == VALID_CAPTURE || result == ENPASSANT)
+        playCaptureSound();
+    else if (result == KINGSIDE_CASTLING || result == QUEENSIDE_CASTLING)
+        playCastleSound();
+    else
+        playMoveSound();
+}
 // Easy clean up for audio
 // A list of audios would be smarter.
 void cleanAudio(void)

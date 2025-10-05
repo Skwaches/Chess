@@ -3,6 +3,5 @@
 bool openDataBase(void);
 void closeDataBase(void);
 bool createTable(void);
-bool recordMove(const char *moveWhite, const char *moveBlack);
-char chessX(int number);
+bool recordMovesyntax(Piece moved, Tile destTile, int result, bool check);
 #endif

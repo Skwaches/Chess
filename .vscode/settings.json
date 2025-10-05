@@ -76,6 +76,7 @@
         "fstream": "c",
         "iosfwd": "c",
         "tuple": "c",
-        "variant": "c"
+        "variant": "c",
+        "rules.h": "c"
     }
 }

@@ -230,11 +230,12 @@ int validatePawnMove(void)
             }
             return INVALID;
         }
-        return VALID_CAPTURE;
     }
     // Can't capture without xDisplacement
     else if (capturing)
         return INVALID;
+    if (destTile.y == 1 || destTile.y == Y_TILES)
+        return PROMOTION + capturing;
     return VALID + capturing;
 }
 int validateKingMove(void)
@@ -575,18 +576,19 @@ bool castleThroughCheck(int Originalvalid)
  * QUEENSIDE_CASTLING for castling queensSide.
  * ENPASSANT for enpassant
  * \param updateState determines whether the validation storage should be updated.
+ * \param causeCheck changes it's value to whether move causes check. Does nothing if NULL.
  * i.e Whether there the move will be made on the board or not.
  * If set to false the board state will not change on the validation end.
  * Don't change state on front-end if this is set to false.*/
-int finalizeMove(bool updateState)
+int finalizeMove(bool updateState, bool *causeCheck)
 {
     saveInit();
     int calculatedvalid = performValidation();
     if (calculatedvalid == INVALID)
         return INVALID;
-    SDL_Log("%d, %d", tmpKingsTile.x, tmpKingsTile.y);
-
     fakePlay(calculatedvalid);
+    if (causeCheck)
+        *causeCheck = setCheck();
     if (updateState)
         noCastling = setCheck(); /*Can't castle when in check*/
     bool badCheck = setBadCheck(tmpKingsTile);
