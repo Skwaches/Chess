@@ -3,7 +3,7 @@
 bool openDataBase(void);
 void closeDataBase(void);
 bool createTable(void);
-bool recordMovesyntax(Piece peace, Tile originalTile,
-                      Tile destTile, int result,
-                      bool check, bool mate);
+bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile,
+                      PieceNode *family, PieceNode *enemy,
+                      int result, bool check, bool mate, bool player);
 #endif

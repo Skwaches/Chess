@@ -7,7 +7,7 @@ static Piece movedPiece;
 static bool playerBool; /*True if white.*/
 static PieceNode *playerFamily, *opponentFamily;
 static Tile destTile;
-
+static char chosenPromo = 'Q';
 /**
  * Derived variables
  * Their values are entirely dependent on the initiate values.
@@ -16,11 +16,12 @@ static Tile destTile;
 static bool capturing = false;
 static int xVector, yVector, yDisplacement, xDisplacement;
 static Tile
-    *tmpFakeMove1,
-    *tmpFakeMove2,
-    origTile, *playerKingsTile, tmpKingsTile,
+    origTile,
+    *playerKingsTile, tmpKingsTile,
     *enemyKingsTile;
-
+static Tile *tmpFakeMove1 = NULL;
+static Tile *tmpFakeMove2 = NULL;
+static Tile *tmpFakeMove3 = NULL;
 static CastlingOptions *playerCastling;
 static Piece tmpPieceFromTile;
 
@@ -135,22 +136,29 @@ bool skippingPiece(void)
     return false;
 }
 
-// Returns {NULL -1} if no piece is found
-Piece pieceFromTile(Tile dest, PieceNode *pieceFamily)
+/**
+ * \param searchPoint The tile to check.
+ * \param pieceFamily The pieces to look through.
+ * \param the memory address of the expected piece identifier if known.
+ * \returns The piece found on the tile.
+ * {NULL -1} if no piece is found.
+ */
+Piece pieceFromTile(Tile searchPoint, PieceNode *pieceFamily, char *pieceName)
 {
-    PieceNode *friend = pieceFamily;
     Piece pieceFoundOnTile = {NULL, -1};
-    while (friend != NULL)
+    bool pieceKnown = pieceName;
+    for (PieceNode *friend = pieceFamily; friend; friend = friend->next)
     {
+        if (pieceKnown && friend->type != *pieceName)
+            continue;
         for (int k = 0; k < friend->appearances; k++)
         {
-            if (dest.x == friend->pos[k].x && dest.y == friend->pos[k].y)
+            if (searchPoint.x == friend->pos[k].x && searchPoint.y == friend->pos[k].y)
             {
                 pieceFoundOnTile = (Piece){friend, k};
                 return pieceFoundOnTile;
             }
         }
-        friend = friend->next;
     }
     return pieceFoundOnTile;
 }
@@ -160,11 +168,11 @@ Piece pieceFromTile(Tile dest, PieceNode *pieceFamily)
 // Returns true if it does and false otherwise.
 bool TileHasOccupant(Tile dest, PieceNode *pieceFamily)
 {
-    return pieceFromTile(dest, pieceFamily).index != -1;
+    return pieceFromTile(dest, pieceFamily, NULL).index != -1;
 }
 
 #pragma region Piece Rules
-bool validateGeneralMoverules(void)
+int validateGeneralMoverules(void)
 {
     // Move has to be within board (0-0)::::: DONE
     if (destTile.x > X_TILES || destTile.y > Y_TILES ||
@@ -194,7 +202,6 @@ int validatePawnMove(void)
      * Forward for white and black is differentIndexing works like cartesian plane.
      * Origin is (1,1) {white's left}.
      */
-
     const int OrigPawnY = playerBool ? WPAWNY : BPAWNY;
     // Forward movement or One Diagonal
     if (xDisplacement > 1 || yDisplacement > 2 || (playerBool ? (yVector <= 0) : (yVector >= 0)))
@@ -350,7 +357,17 @@ Tile *fakeDelete(Piece piece)
     deletePiece(piece);
     return tmpForMove;
 }
-
+Tile *fakePromotion(Piece piece, char chosenChar)
+{
+    for (PieceNode *tmpPiece = playerFamily; tmpPiece; tmpPiece = tmpPiece->next)
+    {
+        if (tmpPiece->type != chosenChar)
+            continue;
+        tmpPiece->pos[tmpPiece->appearances] = destTile;
+        tmpPiece->appearances++;
+    }
+    return fakeDelete(piece);
+}
 /**
  * Free is called here.
  * Resets piece positions from tmp local variable
@@ -362,7 +379,16 @@ void unfakeMove(Piece piece, Tile *tmpHolder)
     movePiece(piece, *tmpHolder);
     SDL_free(tmpHolder);
 }
-
+void unfakePromotion(Piece piece, Tile *promo, char chosenChar)
+{
+    unfakeMove(piece, promo);
+    for (PieceNode *tmpPiece = playerFamily; tmpPiece; tmpPiece = tmpPiece->next)
+    {
+        if (tmpPiece->type != chosenChar)
+            continue;
+        tmpPiece->appearances--;
+    }
+}
 /**
  * Performs the move supplied.
  * Ensure to call unfakePlay.
@@ -370,42 +396,54 @@ void unfakeMove(Piece piece, Tile *tmpHolder)
  */
 void fakePlay(int OrigValid)
 {
+    tmpFakeMove1 = NULL;
+    tmpFakeMove2 = NULL;
+    tmpFakeMove3 = NULL;
+    if (OrigValid == INVALID)
+        return;
+    if (OrigValid != PROMOTION && OrigValid != PROMOTION_CAPTURE)
+        tmpFakeMove1 = fakeMove(movedPiece, destTile);
+    else
+        tmpFakeMove3 = fakePromotion(movedPiece, chosenPromo);
+    char knownRook = ROOK_NAME;
+    Tile rookTile, rookDest;
     int yValueOfPiece = playerBool ? WHITE_Y : BLACK_Y; // For Castling
     switch (OrigValid)
     {
-    case INVALID:
-        tmpFakeMove1 = NULL;
-        tmpFakeMove2 = NULL;
-        break;
     case VALID: // Move no capture
-        tmpFakeMove1 = fakeMove(movedPiece, destTile);
-        tmpFakeMove2 = NULL;
         break;
     case VALID_CAPTURE: // Move + capture
-        tmpFakeMove1 = fakeMove(movedPiece, destTile);
-        tmpPieceFromTile = pieceFromTile(destTile, opponentFamily);
+        tmpPieceFromTile = pieceFromTile(destTile, opponentFamily, NULL);
         tmpFakeMove2 = fakeDelete(tmpPieceFromTile);
         break;
     case KINGSIDE_CASTLING: // Castle KingSide
-        tmpFakeMove1 = fakeMove(movedPiece, destTile);
-        tmpPieceFromTile = pieceFromTile((Tile){ROOK_X[1], yValueOfPiece}, playerFamily);
-        tmpFakeMove2 = fakeMove(tmpPieceFromTile, (Tile){6, yValueOfPiece});
+        rookTile = (Tile){ROOK_X[1], yValueOfPiece};
+        rookDest = (Tile){6, yValueOfPiece};
+        tmpPieceFromTile = pieceFromTile(rookTile, playerFamily, &knownRook);
+        tmpFakeMove2 = fakeMove(tmpPieceFromTile, rookDest);
         break;
     case QUEENSIDE_CASTLING: // Castle QueenSide
-        tmpFakeMove1 = fakeMove(movedPiece, destTile);
-        tmpPieceFromTile = pieceFromTile((Tile){ROOK_X[0], yValueOfPiece}, playerFamily);
-        tmpFakeMove2 = fakeMove(tmpPieceFromTile, (Tile){4, yValueOfPiece});
+        rookTile = (Tile){ROOK_X[0], yValueOfPiece};
+        rookDest = (Tile){4, yValueOfPiece};
+        tmpPieceFromTile = pieceFromTile(rookTile, playerFamily, &knownRook);
+        tmpFakeMove2 = fakeMove(tmpPieceFromTile, rookDest);
         break;
     case ENPASSANT: // enpassant
-        tmpFakeMove1 = fakeMove(movedPiece, destTile);
         Tile niceEn = (Tile){destTile.x, destTile.y + (playerBool ? -1 : 1)};
-        tmpPieceFromTile = pieceFromTile(niceEn, opponentFamily);
+        tmpPieceFromTile = pieceFromTile(niceEn, opponentFamily, NULL);
+        tmpFakeMove2 = fakeDelete(tmpPieceFromTile);
+        break;
+    case PROMOTION:
+        break;
+    case PROMOTION_CAPTURE:
+        tmpPieceFromTile = pieceFromTile(destTile, opponentFamily, NULL);
         tmpFakeMove2 = fakeDelete(tmpPieceFromTile);
         break;
     default:
         SDL_Log("%d", OrigValid);
         tmpFakeMove1 = NULL;
         tmpFakeMove2 = NULL;
+        tmpFakeMove3 = NULL;
         SDL_Log("That move has not been set up yet\n");
         break;
     }
@@ -420,12 +458,12 @@ void fakePlay(int OrigValid)
  */
 void unfakePlay(void)
 {
-    if (tmpFakeMove1 != NULL)
+    if (tmpFakeMove1)
         unfakeMove(movedPiece, tmpFakeMove1);
-    if (tmpFakeMove2 != NULL)
+    if (tmpFakeMove2)
         unfakeMove(tmpPieceFromTile, tmpFakeMove2);
-    tmpFakeMove1 = NULL;
-    tmpFakeMove2 = NULL;
+    if (tmpFakeMove3)
+        unfakePromotion(movedPiece, tmpFakeMove3, chosenPromo);
 }
 
 /**
@@ -575,6 +613,7 @@ int finalizeMove(bool updateState, bool *causeCheck)
     int calculatedvalid = performValidation();
     if (calculatedvalid == INVALID)
         return INVALID;
+
     fakePlay(calculatedvalid);
     if (causeCheck)
         *causeCheck = setCheck();
@@ -582,18 +621,18 @@ int finalizeMove(bool updateState, bool *causeCheck)
         noCastling = setCheck(); /*Can't castle when in check*/
     bool badCheck = setBadCheck(tmpKingsTile);
     resetInit();
+
     unfakePlay();
 
     bool jumpedCheck = castleThroughCheck(calculatedvalid);
+
     if (badCheck || jumpedCheck)
-    {
-        // playIllegalSound();
         return INVALID;
-    }
     if (updateState)
     {
         updateStorage();
         enpassantTimer();
     }
+
     return calculatedvalid;
 }

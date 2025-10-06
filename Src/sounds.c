@@ -1,7 +1,4 @@
-
-#include <SDL3/SDL.h>
 #include "Linkers/funcs.h"
-#include "Linkers/sounds.h"
 
 static MIX_Mixer *ChessMixer;
 static MIX_Track *sfxTrack;
@@ -210,10 +207,13 @@ void playRightSound(bool checkStatus, int result)
     /*Sounds*/
     if (checkStatus)
         playCheckSound();
+    else if (result == PROMOTION_CAPTURE || result == PROMOTION)
+        playPromoteAudio();
     else if (result == VALID_CAPTURE || result == ENPASSANT)
         playCaptureSound();
     else if (result == KINGSIDE_CASTLING || result == QUEENSIDE_CASTLING)
         playCastleSound();
+
     else
         playMoveSound();
 }

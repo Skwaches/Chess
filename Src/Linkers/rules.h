@@ -2,7 +2,7 @@
 #define RULES_H
 #include "funcs.h"
 // Moves
-Piece pieceFromTile(Tile dest, PieceNode *pieceFamily); // Checks against Piece coordinate.
+Piece pieceFromTile(Tile searchPoint, PieceNode *pieceFamily, char *pieceName); // Checks against Piece coordinate.
 bool TileHasOccupant(Tile dest, PieceNode *pieceFamily);
 bool initMove(Piece selectedPiece, Tile originalTile /*It doesn't recalculate without this.*/, Tile globalDest, // Doesn't include check logic///
               bool Currentplayer /*True if white.*/,

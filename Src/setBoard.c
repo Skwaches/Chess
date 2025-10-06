@@ -1,5 +1,4 @@
 #include "Linkers/funcs.h"
-
 /**Creates a linked-list of TileNodes.
  * The given bool dictates if the first tile should be offset.
  * True makes an offset.
@@ -129,24 +128,24 @@ SDL_Texture *maketexture(SDL_Renderer *renderer, const char *path)
 PieceNode *makePieceNode(SDL_Renderer *renderer,
                          char *buffer,
                          PieceNode *tempPiece,
-                         const int appearances,
+                         const int appearsNo,
                          const char name,
                          const int *x,
                          const int y)
 {
     // tempPiece->noInPlay = appearances;
-    tempPiece->appearances = appearances;
+    tempPiece->appearances = appearsNo;
     tempPiece->type = name;
-    Tile *positions = SDL_malloc(appearances * sizeof(Tile));
+    Tile *positions = SDL_malloc((appearsNo + PAWN_NO) * sizeof(Tile));
     if (positions == NULL)
         return NULL;
 
-    for (int p = 0; p < appearances; p++)
+    for (int p = 0; p < appearsNo; p++)
         positions[p] = (Tile){x[p], y};
 
     tempPiece->pos = positions;
     tempPiece->texture = maketexture(renderer, buffer);
-    tempPiece->rect = SDL_malloc(sizeof(SDL_FRect) * tempPiece->appearances);
+    tempPiece->rect = SDL_malloc(sizeof(SDL_FRect) * (appearsNo + PAWN_NO));
     if (tempPiece->texture == NULL)
     {
         SDL_free(positions);

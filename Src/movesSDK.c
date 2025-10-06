@@ -1,8 +1,5 @@
-#include <sqlite3.h>
-#include <SDL3/SDL.h>
 #include "Linkers/funcs.h"
-#include "Linkers/movesSDK.h"
-// EXCLUSIVE TO THIS FILE
+
 static sqlite3 *DATABASE = NULL;
 static unsigned int GAMENUMBER = 0;
 static char *errorMessage = NULL;
@@ -146,12 +143,15 @@ int realX(char letter)
     }
 }
 
-bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile, int result, bool check, bool mate)
+bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile,
+                      PieceNode *family, PieceNode *enemy,
+                      int result, bool check, bool mate, bool player)
 {
     char moveMade[MAX_MOVE_SYNTAX];
     Tile origTile = originalTile;
-    bool capture = (result == VALID_CAPTURE || result == ENPASSANT || result == PROMOTION_CAPTURE);
-
+    bool capture = (result == VALID_CAPTURE ||
+                    result == ENPASSANT ||
+                    result == PROMOTION_CAPTURE);
     const char pieceName = peace.ptr->type;
     char origFile = '\0';
     char origRank = '\0';
@@ -161,7 +161,7 @@ bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile, int result,
     char destFile = '\0';
     char destRank = '\0';
 
-    char promotion = '\0';
+    char promotion = (result == PROMOTION || result == PROMOTION_CAPTURE) ? '=' : '\0';
     char promoRes = '\0';
 
     char materive = mate ? '#' : '\0';
@@ -193,8 +193,29 @@ bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile, int result,
             break;
         }
 
-        origFile = chessX(origTile.x);
-        origRank = '0' + origTile.y;
+        int pieceAppearances = peace.ptr->appearances;
+        int pieceIndex = peace.index;
+        movePiece(peace, originalTile);
+        for (int a = 0; a < pieceAppearances; a++)
+        {
+            if (a == pieceIndex)
+                continue;
+            bool sameFile = peace.ptr->pos[a].x == originalTile.x;
+            bool sameRank = peace.ptr->pos[a].y == originalTile.y;
+            Piece tmpPeace = {peace.ptr, a};
+            initMove(tmpPeace, tmpPeace.ptr->pos[a], destTile, player, family, enemy);
+            if (finalizeMove(false, NULL) != INVALID)
+            {
+                SDL_Log("Hello");
+                if (!(sameRank || sameFile))
+                    sameRank = true;
+                if (sameRank)
+                    origFile = chessX(origTile.x);
+                if (sameFile)
+                    origRank = '0' + origTile.y;
+            }
+        }
+        movePiece(peace, destTile);
     }
     /*Build move.*/
     int currIndex = SDL_strlen(moveMade);

@@ -1,6 +1,5 @@
 #ifndef CLASSES_H
 #define CLASSES_H
-
 #include "funcs.h"
 typedef struct Tile
 {

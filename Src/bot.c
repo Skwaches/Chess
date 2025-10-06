@@ -1,9 +1,9 @@
 #include "Linkers/funcs.h"
-#include "Linkers/bot.h"
+// #include "Linkers/bot.h"
 /**
  * \param selectedPiece The piece to validate.
- * \param family The head* of the player PieceNode.
- * \param enemy The head* of the enemy PieceNode.
+ * \param family Players pieces.
+ * \param enemy Other players pieces.
  * \param player The player making a move.
  * \param noPaths The memory address to store the number of tiles returned.
  * Can be NULL
@@ -16,6 +16,11 @@ Tile *validMoves(Piece selectedPiece, PieceNode *family,
 {
     if (noPaths)
         *noPaths = 0;
+    if (!selectedPiece.ptr)
+    {
+        SDL_Log("Selected Piece is NULL: validMoves");
+        return NULL;
+    }
     Tile originalTile = selectedPiece.ptr->pos[selectedPiece.index];
     if (originalTile.x == SHADOW_REALM.x || originalTile.y == SHADOW_REALM.y)
         return NULL;
@@ -112,7 +117,6 @@ Tile *validMoves(Piece selectedPiece, PieceNode *family,
             }
         }
         break;
-
     case BISHOP_NAME:
         for (int c = realMin; c <= realMax; c++)
         {
@@ -151,11 +155,16 @@ Tile *validMoves(Piece selectedPiece, PieceNode *family,
     {
         destTile = (Tile){originalTile.x + hopes[l].x, originalTile.y + hopes[l].y};
         initMove(selectedPiece, originalTile, destTile, player, family, enemy);
-        if (finalizeMove(false, NULL) != INVALID)
+        int resulter = finalizeMove(false, NULL);
+        if (resulter)
+        {
             dreamer[truths++] = destTile;
+        }
     }
+
     if (noPaths)
         *noPaths = truths;
+
     SDL_free(hopes);
     if (truths)
     {
@@ -175,21 +184,21 @@ Tile *validMoves(Piece selectedPiece, PieceNode *family,
 }
 
 /**
- * Checks if you have Any valid moves.
- * \param playerFamily The pieces of the player whose moves are being evaluated.
- * \param enemyFamily The other player's pieces.
- * \param Your playerbool
+ * Checks if your opponent has any valid moves.
+ * \param playerFamily Your pieces.
+ * \param enemyFamily Enemy's pieces.
+ * \param Enemy's playerbool
  * \returns true if no Valid moves are found.
  */
 bool checkMate(PieceNode *playerFamily, PieceNode *enemyFamily, bool playerBool)
 {
     int noForPiece = 0;
-    for (PieceNode *fam = playerFamily; fam; fam = fam->next)
+    for (PieceNode *fam = enemyFamily; fam; fam = fam->next)
         for (int a = 0; a < fam->appearances; a++)
         {
             Piece tmpPiece = {fam, a};
-            Tile *forPiece = validMoves(tmpPiece, playerFamily,
-                                        enemyFamily, playerBool, &noForPiece);
+            Tile *forPiece = validMoves(tmpPiece, enemyFamily,
+                                        playerFamily, playerBool, &noForPiece);
             if (forPiece)
             {
                 SDL_free(forPiece);
