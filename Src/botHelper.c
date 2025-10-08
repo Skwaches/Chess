@@ -31,7 +31,6 @@ Tile *validMoves(Piece selectedPiece, PieceNode *family,
     }
     int hopePaths = 0;
     Tile destTile;
-
     int minY = -originalTile.y + 1;
     int minX = -originalTile.x + 1;
     int realMin = (minX <= minY) ? minX : minY;
@@ -48,12 +47,17 @@ Tile *validMoves(Piece selectedPiece, PieceNode *family,
                 break;
             if ((y == 2 * dir))
             {
+                if (hopePaths >= MAX_POSSIBLE_MOVES)
+                    break;
                 if (originalTile.y == (player ? WPAWNY : BPAWNY))
                     hopes[hopePaths++] = (Tile){0, y};
+
                 continue;
             }
             for (int x = -1; x < 2; x++)
             {
+                if (hopePaths >= MAX_POSSIBLE_MOVES)
+                    break;
                 if (x >= minX && x <= maxX)
                     hopes[hopePaths++] = (Tile){x, y};
             }
@@ -76,36 +80,81 @@ Tile *validMoves(Piece selectedPiece, PieceNode *family,
                 }
                 if (!y && !x)
                     continue;
+                if (hopePaths >= MAX_POSSIBLE_MOVES)
+                    break;
                 hopes[hopePaths++] = (Tile){x, y};
             }
         break;
-
     case QUEEN_NAME:
-        /*Bishop*/
         for (int c = realMin; c <= realMax; c++)
         {
             if (!c || !(c >= minX && c <= maxX))
                 continue;
+            if (hopePaths >= MAX_POSSIBLE_MOVES)
+                break;
+            if ((-c >= minY) && -c <= maxY)
+                hopes[hopePaths++] = (Tile){c, -c};
+            if ((c >= minY && c <= maxY))
+                hopes[hopePaths++] = (Tile){c, c};
+        }
+        /*Rook*/
+        for (int x = minX; x <= maxX; x++)
+        {
+            if (hopePaths >= MAX_POSSIBLE_MOVES)
+                break;
+            if (x)
+                hopes[hopePaths++] = (Tile){x, 0};
+        }
+
+        for (int y = minY; y <= maxY; y++)
+        {
+            if (hopePaths >= MAX_POSSIBLE_MOVES)
+                break;
+            if (y)
+                hopes[hopePaths++] = (Tile){0, y};
+        }
+        break;
+    case BISHOP_NAME:
+        for (int c = realMin; c <= realMax; c++)
+        {
+            if (hopePaths >= MAX_POSSIBLE_MOVES)
+                break;
+            if (!c || !(c >= minX && c <= maxX))
+                continue;
+
             if ((-c >= minY) && -c <= maxY)
                 hopes[hopePaths++] = (Tile){c, -c};
 
             if ((c >= minY && c <= maxY))
                 hopes[hopePaths++] = (Tile){c, c};
         }
-        /*Rook*/
+        break;
+    case ROOK_NAME:
         for (int x = minX; x <= maxX; x++)
+        {
+            if (hopePaths >= MAX_POSSIBLE_MOVES)
+                break;
             if (x)
                 hopes[hopePaths++] = (Tile){x, 0};
+        }
 
         for (int y = minY; y <= maxY; y++)
+        {
+            if (hopePaths >= MAX_POSSIBLE_MOVES)
+                break;
             if (y)
                 hopes[hopePaths++] = (Tile){0, y};
+        }
         break;
     case KNIGHT_NAME:
         for (int i = -1; i <= 1; i += 2)
         {
+            if (hopePaths >= MAX_POSSIBLE_MOVES)
+                break;
             for (int j = -2; j <= 2; j += 4)
             {
+                if (hopePaths >= MAX_POSSIBLE_MOVES)
+                    break;
                 if (i >= minX && i <= maxX &&
                     j >= minY && j <= maxY)
                 {
@@ -121,27 +170,7 @@ Tile *validMoves(Piece selectedPiece, PieceNode *family,
             }
         }
         break;
-    case BISHOP_NAME:
-        for (int c = realMin; c <= realMax; c++)
-        {
-            if (!c || !(c >= minX && c <= maxX))
-                continue;
-            if ((-c >= minY) && -c <= maxY)
-                hopes[hopePaths++] = (Tile){c, -c};
 
-            if ((c >= minY && c <= maxY))
-                hopes[hopePaths++] = (Tile){c, c};
-        }
-        break;
-    case ROOK_NAME:
-        for (int x = minX; x <= maxX; x++)
-            if (x)
-                hopes[hopePaths++] = (Tile){x, 0};
-
-        for (int y = minY; y <= maxY; y++)
-            if (y)
-                hopes[hopePaths++] = (Tile){0, y};
-        break;
     default:
         SDL_Log("Unknown Piece :validMoves");
         break;
@@ -151,15 +180,17 @@ Tile *validMoves(Piece selectedPiece, PieceNode *family,
     Tile *dreamer = SDL_malloc(sizeof(Tile) * MAX_POSSIBLE_MOVES);
     if (!dreamer)
     {
+        SDL_free(hopes);
         SDL_Log("Allocation Error Bot : dreamer");
         return NULL;
     }
+
     for (int l = 0; l < hopePaths; l++)
     {
         destTile = (Tile){originalTile.x + hopes[l].x, originalTile.y + hopes[l].y};
         initMove(selectedPiece, originalTile, destTile, player, family, enemy, PROMODEFAULT /*Promotion Value is irrelevant here I believe*/);
         int resulter = finalizeMove();
-        if (resulter)
+        if (resulter && (truths < MAX_POSSIBLE_MOVES))
         {
             if (valids)
                 valids[truths] = resulter;
@@ -167,82 +198,145 @@ Tile *validMoves(Piece selectedPiece, PieceNode *family,
         }
     }
 
-    if (noPaths)
-        *noPaths = truths;
-
     SDL_free(hopes);
-    if (truths)
-    {
-        SDL_realloc(dreamer, sizeof(Tile) * truths);
-        if (!dreamer)
-        {
-            SDL_Log("ReAlloc failed BOT: dreamer");
-            return NULL;
-        }
-    }
-    else
+    if (!truths)
     {
         SDL_free(dreamer);
-        dreamer = NULL;
+        return NULL;
     }
+    Tile *tmpLucid = SDL_realloc(dreamer, sizeof(Tile) * truths);
+    if (!tmpLucid)
+    {
+        SDL_Log("ReAlloc failed BOT: dreamer");
+        SDL_free(dreamer);
+        return NULL;
+    }
+    if (noPaths)
+        *noPaths = truths;
+    dreamer = tmpLucid;
     return dreamer;
 }
 
-/**
- * Checks if your opponent has any valid moves.
- * \param playerFamily Your pieces.
- * \param enemyFamily Enemy's pieces.
- * \param Enemy's playerbool
- * \returns true if no Valid moves are found.
- */
-bool checkMate(PieceNode *playerFamily, PieceNode *enemyFamily, bool playerBool)
+void freeMoves(Move *pool)
 {
-    int noForPiece = 0;
-    for (PieceNode *fam = enemyFamily; fam; fam = fam->next)
-        for (int a = 0; a < fam->appearances; a++)
+    if (!pool)
+        return;
+    for (int a = 0; a < PIECETYPES; a++)
+    {
+        if (!pool[a].pieces)
+            continue;
+        int overall = pool[a].pieces->appearances;
+        for (int b = 0; b < overall; b++)
         {
-            Piece tmpPiece = {fam, a};
-            Tile *forPiece = validMoves(tmpPiece, enemyFamily,
-                                        playerFamily, playerBool, &noForPiece, NULL);
-            if (forPiece)
+            if (pool[a].no && pool[a].no[b])
             {
-                SDL_free(forPiece);
-                return false;
+                if (pool[a].dreams)
+                    SDL_free(pool[a].dreams[b]);
+                if (pool[a].valids)
+                    SDL_free(pool[a].valids[b]);
             }
         }
-    return true;
+        SDL_free(pool[a].no);
+        SDL_free(pool[a].dreams);
+        SDL_free(pool[a].valids);
+    }
+    SDL_free(pool);
 }
 
 Move *selectionPool(PieceNode *botFamily, PieceNode *humanFamily, bool player)
 {
     Move *allMoves = SDL_calloc(PIECETYPES, sizeof(Move));
+    if (!allMoves)
+        return NULL;
     int noForPiece = 0;
     int types = 0;
     PieceNode *botty = botFamily;
-    while (types < PIECETYPES)
+    while (types < PIECETYPES && botty)
     {
         allMoves[types].pieces = botty;
         allMoves[types].dreams = SDL_calloc(botty->appearances, sizeof(Tile *));
         allMoves[types].valids = SDL_calloc(botty->appearances, sizeof(int *));
         allMoves[types].no = SDL_calloc(botty->appearances, sizeof(int));
+        if (!allMoves[types].dreams || !allMoves[types].valids || !allMoves[types].no)
+        {
+            freeMoves(allMoves);
+            SDL_free(allMoves);
+            return NULL;
+        }
         for (int a = 0; a < botty->appearances; a++)
         {
             Piece tmpPiece = {botty, a};
             int *validers = SDL_malloc(MAX_POSSIBLE_MOVES * sizeof(int));
+            if (!validers)
+            {
+                allMoves[types].valids[a] = NULL;
+                allMoves[types].dreams[a] = NULL;
+                allMoves[types].no[a] = 0;
+                continue;
+            }
             Tile *forPiece = validMoves(tmpPiece, botFamily,
                                         humanFamily, player, &noForPiece, validers);
-            SDL_realloc(validers, sizeof(int) * noForPiece);
-            allMoves[types].valids[a] = validers;
-            allMoves[types].dreams[a] = forPiece;
-            allMoves[types].no[a] = noForPiece;
+            if (forPiece && noForPiece > 0)
+            {
+                int *tmpValiders = SDL_realloc(validers, sizeof(int) * noForPiece);
+                if (tmpValiders)
+                    validers = tmpValiders;
+                allMoves[types].valids[a] = validers;
+                allMoves[types].dreams[a] = forPiece;
+                allMoves[types].no[a] = noForPiece;
+            }
+            else
+            {
+                SDL_free(validers);
+                allMoves[types].valids[a] = NULL;
+                allMoves[types].dreams[a] = NULL;
+                allMoves[types].no[a] = 0;
+            }
             noForPiece = 0;
         }
         types++;
         botty = botty->next;
-        if (!botty)
-            break;
     }
     return allMoves;
+}
+
+/**
+ * Checks if any moves are available in the pool.
+ * \returns true if no Valid moves are found.
+ */
+bool checkMate(Move *pool)
+{
+    if (!pool)
+        return false;
+    for (int a = 0; a < PIECETYPES; a++)
+        for (int b = 0; b < pool[a].pieces->appearances; b++)
+            if (pool[a].no[b])
+                return false;
+    return true;
+}
+
+bool checkstale(PieceNode *playerFamily, PieceNode *enemyFamily)
+{
+    PieceNode *player = playerFamily;
+    PieceNode *enemy = enemyFamily;
+    while (player && enemy)
+    {
+        if (player->type != KING_NAME)
+            for (int a = 0; a < player->appearances; a++)
+                if (player->pos[a].x != SHADOW_REALM.x &&
+                    player->pos[a].y != SHADOW_REALM.y)
+                    return false;
+
+        if (enemy->type != KING_NAME)
+            for (int a = 0; a < enemy->appearances; a++)
+                if (enemy->pos[a].x != SHADOW_REALM.x &&
+                    enemy->pos[a].y != SHADOW_REALM.y)
+                    return false;
+
+        player = player->next;
+        enemy = enemy->next;
+    }
+    return true;
 }
 
 Tile *tileFromPool(Piece piece, Move *pool, int *listLength, int **validers)
@@ -251,55 +345,16 @@ Tile *tileFromPool(Piece piece, Move *pool, int *listLength, int **validers)
     {
         if (pool[a].pieces->type != piece.ptr->type)
             continue;
-
-        if (validers)
-            *validers = pool[a].valids[piece.index];
         if (listLength)
             *listLength = pool[a].no[piece.index];
+        if (!pool[a].no[piece.index])
+            return NULL;
+        if (validers)
+            *validers = pool[a].valids[piece.index];
+
         return pool[a].dreams[piece.index];
     }
     return NULL;
-}
-
-/*This is in dire need of optimisation.*/
-Tile randomMoveFromPool(Move *pool, Piece *pieceholder, int *valid)
-{
-    Sint32 pieceNodeChosen = SDL_rand(PIECETYPES);
-    Sint32 indexChosen = SDL_rand(pool[pieceNodeChosen].pieces->appearances);
-
-    int options = pool[pieceNodeChosen].no[indexChosen];
-    while (!options)
-    {
-        pieceNodeChosen = SDL_rand(PIECETYPES);
-        indexChosen = SDL_rand(pool[pieceNodeChosen].pieces->appearances);
-        options = pool[pieceNodeChosen].no[indexChosen];
-    }
-
-    if (pieceholder)
-        *pieceholder = (Piece){pool[pieceNodeChosen].pieces, indexChosen};
-    Sint32 destTileChosen = SDL_rand(pool[pieceNodeChosen].no[indexChosen]);
-
-    if (valid)
-        *valid = pool[pieceNodeChosen].valids[indexChosen][destTileChosen];
-    Tile destTile = pool[pieceNodeChosen].dreams[indexChosen][destTileChosen];
-    return destTile;
-}
-
-void freeMoves(Move *pool)
-{
-    for (int a = 0; a < PIECETYPES; a++)
-    {
-        int overall = pool[a].pieces->appearances;
-        for (int b = 0; b < overall; b++)
-        {
-            SDL_free(pool[a].dreams[b]);
-            SDL_free(pool[a].valids[b]);
-        }
-        SDL_free(pool[a].dreams);
-        SDL_free(pool[a].no);
-    }
-    SDL_free(pool);
-    pool = NULL;
 }
 
 void printMoves(Move *pool)

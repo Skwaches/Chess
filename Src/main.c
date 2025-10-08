@@ -6,14 +6,26 @@ bool leftMouseRelease = false;
 bool leftMouseclick = false;
 bool rightMouseclick = false;
 bool middleClick = false;
+bool F10clicked = false;
+bool F4clicked = false;
 bool successfulLaunch = true;
 bool running = true;
-
-bool player = STARTSIDE; /*White Starts*/
+bool player = STARTSIDE;
 bool checkedMate = true;
+bool gameOver = false;
 bool mate = false;
 bool stale = false;
 bool checkStatus = false;
+Tile (*BOT_MAIN)(Move *, Piece *, int *) = &bot4;
+static Tile destTile, originalTile, *validDest;
+static int destOptions, *validCounters;
+static char pawnoGo = PROMODEFAULT;
+static bool selfplayer = SELFPLAY;
+static bool accelBots = false;
+static Uint64 savedTime = 0;
+static int totalMoves = 0;
+
+int result = INVALID;
 Move *allMoves = NULL;
 PieceNode **playerPieces = NULL;
 PieceNode **opponentPieces = NULL;
@@ -53,6 +65,7 @@ void launch()
         accident();
         return;
     }
+
     if (!createTable())
     {
         closeDataBase();
@@ -130,6 +143,7 @@ void setup(void)
     /*For side selection*/
     playerPieces = player ? &whiteHeadPiece : &blackHeadPiece;
     opponentPieces = !player ? &whiteHeadPiece : &blackHeadPiece;
+    allMoves = selectionPool(*playerPieces, *opponentPieces, player);
     playGameStartAudio();
 }
 
@@ -139,6 +153,8 @@ void process_input(void)
     leftMouseclick = false;
     middleClick = false;
     rightMouseclick = false;
+    F10clicked = false;
+    F4clicked = false;
     SDL_Event event;
     SDL_PollEvent(&event);
     switch (event.type)
@@ -168,7 +184,12 @@ void process_input(void)
             leftMouseRelease = true;
         }
         break;
-
+    case SDL_EVENT_KEY_DOWN:
+        if (event.key.scancode == SDL_SCANCODE_F10)
+            F10clicked = true;
+        if (event.key.scancode == SDL_SCANCODE_F4)
+            F4clicked = true;
+        break;
     default:
         break;
     }
@@ -176,43 +197,57 @@ void process_input(void)
 
 bool newGame(void)
 {
+    totalMoves = 0;
     playGameStartAudio();
     player = STARTSIDE;
     mate = false;
     stale = false;
-    allMoves = NULL;
     checkedMate = true;
+    result = INVALID;
+    gameOver = false;
     resetStorage();
     unselectAll(headDarkTile, headLightTile);
     resetPieces(whiteHeadPiece, true);
     resetPieces(blackHeadPiece, false);
     playerPieces = player ? &whiteHeadPiece : &blackHeadPiece;
     opponentPieces = !player ? &whiteHeadPiece : &blackHeadPiece;
-    if (!createTable())
+    freeMoves(allMoves);
+    allMoves = selectionPool(*playerPieces, *opponentPieces, player);
+    int currentTable = createTable();
+    if (!currentTable || (currentTable >= MAX_GAMES))
         return false;
     return true;
 }
 
 bool update(void)
 {
-    if (middleClick && !newGame())
-        return false;
-    if (LIMIT_FPS)
-        SDL_Delay(WAIT_TIME);
-    int fps = getFPS(100);
-    if (fps)
-    {
-        SDL_Log("%d\n", fps);
-    }
-    // Cursor Position
     SDL_GetMouseState(&mousepos.x, &mousepos.y);
-    static Tile destTile, originalTile, *validDest;
-    static int result = INVALID;
-    static int destOptions, *validCounters;
-    static char pawnoGo = PROMODEFAULT;
-    static Uint64 savedTime = 0;
-    if (!allMoves)
-        allMoves = selectionPool(*playerPieces, *opponentPieces, player);
+
+    if (LIMIT_FPS)
+    {
+        SDL_Delay(WAIT_TIME);
+    }
+
+    if (F10clicked)
+    {
+        accelBots = !accelBots;
+    }
+
+    if ((mate || stale || gameOver) && selfplayer)
+    {
+        if (!newGame())
+            return false;
+    }
+
+    if (F4clicked)
+    {
+        newGame();
+    }
+
+    if (middleClick)
+    {
+        selfplayer = !selfplayer;
+    }
 
     if (rightMouseclick)
     {
@@ -231,19 +266,19 @@ bool update(void)
             playerPiece = pieceFromTile(mouseTile, *playerPieces, NULL);
         opponentPiece = pieceFromTile(mouseTile, *opponentPieces, NULL);
         /*Highlight destination options.*/
-        if (playerPiece.ptr && !(mate || stale) && allMoves)
+        if (playerPiece.ptr && !(mate || stale))
         {
             validDest = tileFromPool(playerPiece, allMoves, &destOptions, &validCounters);
-            for (int a = 0; a < destOptions; a++)
-            {
-                TileNode *foundNode = nodeFromTile(validDest[a], headDarkTile, headLightTile);
-                if (foundNode)
-                    foundNode->selected = true;
-            }
+            if (validDest)
+                for (int a = 0; a < destOptions; a++)
+                {
+                    TileNode *foundNode = nodeFromTile(validDest[a], headDarkTile, headLightTile);
+                    if (foundNode)
+                        foundNode->selected = true;
+                }
         }
     }
 
-    /**Track mouse */
     if (leftMouseHeld)
     {
         if (playerPiece.ptr)
@@ -252,11 +287,10 @@ bool update(void)
             trackMouse(opponentPiece, mousepos);
     }
 
-    /**Validate and make move */
     if (leftMouseRelease)
     {
         if (!playerPiece.ptr ||
-            mate || stale || player == BOT)
+            mate || stale || selfplayer)
         {
             if (mate)
                 SDL_Log("MATE");
@@ -268,15 +302,16 @@ bool update(void)
         {
             destTile = TileFromPos(mousepos);
             originalTile = playerPiece.ptr->pos[playerPiece.index];
-            for (int k = 0; k < destOptions; k++)
-            {
-                if (destTile.x == validDest[k].x &&
-                    destTile.y == validDest[k].y)
+            if (destOptions)
+                for (int k = 0; k < destOptions; k++)
                 {
-                    result = validCounters[k];
-                    break;
+                    if (destTile.x == validDest[k].x &&
+                        destTile.y == validDest[k].y)
+                    {
+                        result = validCounters[k];
+                        break;
+                    }
                 }
-            }
         }
         if (result == INVALID)
         {
@@ -287,16 +322,17 @@ bool update(void)
         }
     }
 
-    if (player == BOT)
+    if (selfplayer || player == BOT)
     {
         if (mate || stale)
             return true;
         if (!savedTime)
             savedTime = SDL_GetTicks();
-        if (SDL_GetTicks() - savedTime < BOT_DELAY)
+        Uint64 botmoveDelay = !accelBots ? BOT_DELAY : (BOT_DELAY / ((BOT_ACCEL > 0) ? BOT_ACCEL : 1));
+        if (SDL_GetTicks() - savedTime < botmoveDelay)
             return true;
         savedTime = 0;
-        destTile = randomMoveFromPool(allMoves, &playerPiece, &result);
+        destTile = (*BOT_MAIN)(allMoves, &playerPiece, &result);
         originalTile = playerPiece.ptr->pos[playerPiece.index];
     }
 
@@ -305,7 +341,8 @@ bool update(void)
         initMove(playerPiece, originalTile, destTile, player,
                  *playerPieces, *opponentPieces, pawnoGo);
         fullLogicUpdate(result, &checkStatus);
-        playRightSound(checkStatus, result);
+        if (!accelBots)
+            playRightSound(checkStatus, result);
         performMove(result, playerPiece, destTile, pawnoGo, playerPieces, opponentPieces, player);
         checkedMate = false;
         result = INVALID;
@@ -314,67 +351,122 @@ bool update(void)
     /**Check if your opponent has a move */
     if (!checkedMate)
     {
-        unselectAll(headDarkTile, headLightTile);
-        freeMoves(allMoves);
-        allMoves = NULL;
-        bool enemyBool = !player;
-        bool cantPlay = checkMate(*playerPieces, *opponentPieces, enemyBool);
-        mate = cantPlay && checkStatus;
-        stale = cantPlay && !checkStatus;
-        recordMovesyntax(playerPiece, originalTile, destTile, *playerPieces,
-                         *opponentPieces, result, checkStatus, mate, enemyBool, pawnoGo);
-        if (mate || stale)
+        if (LIMIT_MOVES_PER_GAME)
         {
+            gameOver = totalMoves > MAX_MOVES_PER_GAME;
+        }
+        unselectAll(headDarkTile, headLightTile);
+        bool enemyBool = !player;
+        freeMoves(allMoves);
+        allMoves = selectionPool(*opponentPieces, *playerPieces, enemyBool);
+        bool cantPlay = checkMate(allMoves);
+        if (cantPlay)
+        {
+            mate = checkStatus;
+            stale = checkstale(*playerPieces, *opponentPieces);
+            if (!stale)
+                stale = !checkStatus;
+        }
+        recordMovesyntax(playerPiece, originalTile, destTile, *playerPieces,
+                         *opponentPieces, result, checkStatus, mate, enemyBool,
+                         pawnoGo, stale, gameOver);
+
+        if (mate || stale || gameOver)
+        {
+            totalMoves = 0;
             playGameEndAudio();
             if (mate)
                 SDL_Log("%d WON!", player);
             if (stale)
                 SDL_Log("%d caused stalemate....", player);
+            if (gameOver)
+            {
+                SDL_Log("Game was terminated.");
+            }
+            if (selfplayer)
+            {
+                if (!newGame())
+                {
+                    return false;
+                }
+            }
         }
-        checkedMate = true;
         player = !player;
-        /*For side selection*/
         playerPieces = player ? &whiteHeadPiece : &blackHeadPiece;
         opponentPieces = !player ? &whiteHeadPiece : &blackHeadPiece;
         playerPiece = NULL_PIECE;
+        checkedMate = true;
+        totalMoves++;
     }
 
     return true;
 }
 
-// Returns True if all Items where rendered successfully
 bool render(void)
 {
     // Background
     if (!setRenderColor(renderer, BACKGROUND_COLOR))
+    {
+        SDL_Log("Render Fail : 0");
         return false;
+    }
+
     if (!SDL_RenderClear(renderer))
+    {
+        SDL_Log("Render Fail : 1");
         return false;
+    }
+
+    if (accelBots)
+    {
+        if (!SDL_RenderPresent(renderer))
+        {
+            SDL_Log("Render Fail : 6");
+            return false;
+        }
+        return true;
+    }
 
     // Light Tiles
     if (!renderTileNodes(renderer, headLightTile, LIGHT_TILE_COLOR))
+    {
+        SDL_Log("Render Fail : 2");
         return false;
+    }
 
     // Dark Tiles
     if (!renderTileNodes(renderer, headDarkTile, DARK_TILE_COLOR))
+    {
+        SDL_Log("Render Fail : 3");
         return false;
+    }
 
     // Black Pieces
     if (!renderPieces(renderer, blackHeadPiece))
+    {
+        SDL_Log("Render Fail : 4");
         return false;
+    }
 
     // White Pieces
     if (!renderPieces(renderer, whiteHeadPiece))
+    {
+        SDL_Log("Render Fail : 5");
         return false;
+    }
 
     // Present
     if (!SDL_RenderPresent(renderer))
+    {
+        SDL_Log("Render Fail : 6");
         return false;
+    }
     return true;
 }
 
 void clean(void)
 {
+    freeMoves(allMoves);
     cleanAudio();
     closeDataBase();
     freePieces(blackHeadPiece);

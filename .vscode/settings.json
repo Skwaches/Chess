@@ -4,6 +4,9 @@
     },
     "files.associations": {
         "rules.h": "c",
-        "random": "c"
+        "random": "c",
+        "funcs.h": "c",
+        "stdlib.h": "c",
+        "setboard.h": "c"
     },
 }

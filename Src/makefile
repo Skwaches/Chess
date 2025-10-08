@@ -1,6 +1,14 @@
+CFLAGS = -Wall -Wextra -g
+LDFLAGS = -lSDL3 -lSDL3_image -lSDL3_mixer -lsqlite3
+SRC = $(wildcard ./*.c)
+OUT = ../game
+
 build:
-	gcc -Wall ./*.c -lSDL3 -lSDL3_image -lsqlite3 -lSDL3_mixer -o ../game
-run:
+	gcc $(CFLAGS) $(SRC) $(LDFLAGS) -o $(OUT)
+
+run: 
 	../game
+
+
 clean:
-	rm ../game
+	rm -f $(OUT)

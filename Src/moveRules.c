@@ -41,6 +41,7 @@ static Piece tmpMovedPiece;
 static Tile tmpOrigTile, tmpDestTile;
 static bool tmpPlayerBool;
 static PieceNode *tmpPlayerFamily, *tmpOpponentFamily;
+
 void saveInit(void)
 {
     tmpMovedPiece = movedPiece;
@@ -228,7 +229,8 @@ int validateKingMove(void)
      * Can't castle through check.
      * Can't be in check.
      */
-    if (xDisplacement == 2 && yDisplacement == 0 && origTile.x == KING_X[0] && !capturing && !noCastling)
+    if (xDisplacement == 2 && yDisplacement == 0 &&
+        origTile.x == KING_X[0] && !capturing && !noCastling)
     {
         // Castle;
         if (playerCastling->kingside && xVector > 0)
@@ -236,7 +238,6 @@ int validateKingMove(void)
             tmpKingsTile = destTile;
             return KINGSIDE_CASTLING;
         }
-
         else if (playerCastling->queenside && xVector < 0 &&
                  !TileHasOccupant((Tile){destTile.x - 1, destTile.y}, playerFamily) &&
                  !TileHasOccupant((Tile){destTile.x - 1, destTile.y}, opponentFamily))
@@ -317,6 +318,8 @@ int performValidation()
 Tile *fakeMove(Piece piece, Tile dest)
 {
     Tile *tmpForMove = SDL_malloc(sizeof(Tile));
+    if (!tmpForMove)
+        SDL_Log("Allocation Failed : fakeMove");
     *tmpForMove = piece.ptr->pos[piece.index];
     movePiece(piece, dest);
     return tmpForMove;
@@ -333,6 +336,8 @@ Tile *fakeMove(Piece piece, Tile dest)
 Tile *fakeDelete(Piece piece)
 {
     Tile *tmpForMove = SDL_malloc(sizeof(Tile));
+    if (!tmpForMove)
+        SDL_Log("Allocation Failed : fakeDelete");
     *tmpForMove = piece.ptr->pos[piece.index];
     deletePiece(piece);
     return tmpForMove;

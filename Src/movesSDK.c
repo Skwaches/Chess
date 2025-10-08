@@ -8,7 +8,7 @@ static sqlite3_stmt *statement;
 // DataBase is opened and closed from the Main file:
 bool openDataBase(void)
 {
-    if (sqlite3_open("../Moves.db", &DATABASE) != SQLITE_OK)
+    if (sqlite3_open(DATABASE_FILE_NAME, &DATABASE) != SQLITE_OK)
     {
         sqlite3_close(DATABASE);
         SDL_Log("DataBase could not be opened :%s", sqlite3_errmsg(DATABASE));
@@ -31,7 +31,7 @@ void closeDataBase(void)
     DATABASE = NULL;
 }
 
-bool createTable(void)
+int createTable(void)
 {
     GAMENUMBER++;
     char command[56 + 1 + 10];
@@ -43,9 +43,9 @@ bool createTable(void)
         SDL_Log("SQL ERROR : %s", errorMessage);
         sqlite3_free(errorMessage);
         errorMessage = NULL; // Avoid dangling pointer
-        return false;
+        return 0;
     }
-    return true;
+    return GAMENUMBER;
 }
 
 bool recordMove(const char *move)
@@ -145,7 +145,8 @@ int realX(char letter)
 
 bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile,
                       PieceNode *family, PieceNode *enemy,
-                      int result, bool check, bool mate, bool player, char chosenPiece)
+                      int result, bool check, bool mate, bool player,
+                      char chosenPiece, bool stale, bool gameOver)
 {
     char moveMade[MAX_MOVE_SYNTAX];
     Tile origTile = originalTile;
@@ -166,7 +167,8 @@ bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile,
 
     char materive = mate ? '#' : '\0';
     char checkive = (!mate && check) ? '+' : '\0';
-
+    char stalin = (stale) ? '$' : '\0';
+    char bored = (gameOver) ? '*' : '\0';
     switch (result)
     {
     case KINGSIDE_CASTLING:
@@ -236,6 +238,10 @@ bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile,
         moveMade[currIndex++] = checkive;
     if (materive)
         moveMade[currIndex++] = materive;
+    if (stalin)
+        moveMade[currIndex++] = stalin;
+    if (bored)
+        moveMade[currIndex++] = bored;
     moveMade[currIndex] = '\0';
     return recordMove(moveMade);
 }

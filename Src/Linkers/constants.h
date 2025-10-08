@@ -20,7 +20,7 @@
 // FPS
 #define FPS 1000.0
 #define WAIT_TIME ((1 / FPS) * 1000.0)
-#define LIMIT_FPS false
+#define LIMIT_FPS true
 
 // PATHS
 #define WHITE_PIECES_PATH "../Assets/Visual/Pieces/White"
@@ -32,8 +32,8 @@
 #define MAX_ASSET_PATH 100
 #define MAX_MOVE_SYNTAX 40
 #define MAX_COMMAND_LENGTH 128
-#define MAX_POSSIBLE_MOVES (int)(X_TILES * Y_TILES) / 2
-#define MAX_TOTAL_POSSIBLE_MOVES 128
+#define MAX_POSSIBLE_MOVES (7 * (X_TILES > Y_TILES ? X_TILES : Y_TILES))
+#define MAX_TOTAL_POSSIBLE_MOVES 220
 
 // IMAGE FORMAT
 #define SVG_WIDTH TILE_WIDTH
@@ -80,13 +80,20 @@
 #define PROMOTION_CAPTURE 7
 
 /*White is true. Black is false;*/
-#define STARTSIDE true;
-#define HUMAN false
-#define BOT true
-#define BOT_DELAY 1000
+#define STARTSIDE true
+#define HUMAN true
+#define BOT !HUMAN
+#define DATABASE_FILE_NAME "../Moves.db"
+#define BOT_DELAY 500 /*Time is in ms*/
+#define BOT_ACCEL 8   /*By what factor should the BOT_DELAY be reduced by. should not be less than 1*/
 #define PROMODEFAULT QUEEN_NAME
-
+#define SELFPLAY false
+#define LIMIT_GAMES false
+#define MAX_GAMES 100
+#define LIMIT_MOVES_PER_GAME false
+#define MAX_MOVES_PER_GAME 100
 #define NULL_PIECE (Piece){NULL, -1}
+
 // DELETE PIECE
 extern const Tile SHADOW_REALM;
 
