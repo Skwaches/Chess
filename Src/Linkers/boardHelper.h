@@ -11,5 +11,8 @@ void movePiece(Piece fakePIECE, Tile destCoordinates);
 void deletePiece(Piece fakePiece);
 TileNode *nodeFromTile(Tile coords, TileNode *light, TileNode *dark);
 void promotePiece(Piece fakePiece, char chosenOne, PieceNode *Family, Tile destTile);
+void performMove(int result, Piece playerPiece, Tile destTile, char pawnoGo,
+                 PieceNode **playerPieces, PieceNode **opponentPieces, bool player);
 int getFPS(Uint64 time);
+bool timer(Uint64 time, Uint64 *localTotalTime, Uint64 *startTime);
 #endif

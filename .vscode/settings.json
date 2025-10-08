@@ -3,6 +3,7 @@
         "c": "cd $dir && make && make run"
     },
     "files.associations": {
-        "rules.h": "c"
+        "rules.h": "c",
+        "random": "c"
     },
 }

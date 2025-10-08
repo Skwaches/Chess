@@ -6,11 +6,12 @@ Piece pieceFromTile(Tile searchPoint, PieceNode *pieceFamily, char *pieceName); 
 bool TileHasOccupant(Tile dest, PieceNode *pieceFamily);
 bool initMove(Piece selectedPiece, Tile originalTile /*It doesn't recalculate without this.*/, Tile globalDest, // Doesn't include check logic///
               bool Currentplayer /*True if white.*/,
-              PieceNode *family, PieceNode *enemy);
+              PieceNode *family, PieceNode *enemy, char selectPromo);
 void resetStorage(void);
 Tile *fakeMove(Piece piece, Tile dest);
 Tile *fakeDelete(Piece piece);
 void unfakeMove(Piece piece, Tile *tmpHolder);
-int finalizeMove(bool updateState, bool *causeCheck);
+int finalizeMove(void);
+void fullLogicUpdate(int valid, bool *cheekers);
 bool setCheck(void);
 #endif

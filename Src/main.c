@@ -8,15 +8,17 @@ bool rightMouseclick = false;
 bool middleClick = false;
 bool successfulLaunch = true;
 bool running = true;
-bool player = true; // WHITE :D
+
+bool player = STARTSIDE; /*White Starts*/
 bool checkedMate = true;
 bool mate = false;
 bool stale = false;
-bool checkStatus;
+bool checkStatus = false;
+Move *allMoves = NULL;
 PieceNode **playerPieces = NULL;
 PieceNode **opponentPieces = NULL;
-Piece playerPiece = {NULL, -1};
-Piece opponentPiece = {NULL, -1};
+Piece playerPiece = NULL_PIECE;
+Piece opponentPiece = NULL_PIECE;
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 TileNode *headLightTile = NULL;
@@ -172,70 +174,72 @@ void process_input(void)
     }
 }
 
-bool resetGame(void)
+bool newGame(void)
 {
     playGameStartAudio();
-    player = true;
+    player = STARTSIDE;
     mate = false;
     stale = false;
+    allMoves = NULL;
     checkedMate = true;
     resetStorage();
     unselectAll(headDarkTile, headLightTile);
     resetPieces(whiteHeadPiece, true);
     resetPieces(blackHeadPiece, false);
+    playerPieces = player ? &whiteHeadPiece : &blackHeadPiece;
+    opponentPieces = !player ? &whiteHeadPiece : &blackHeadPiece;
     if (!createTable())
-    {
         return false;
-    }
     return true;
 }
 
 bool update(void)
 {
-    int fps = getFPS(100000);
-    if (fps)
-        SDL_Log("%d frames per second", fps);
-
-    if (middleClick && !resetGame())
+    if (middleClick && !newGame())
         return false;
-
     if (LIMIT_FPS)
         SDL_Delay(WAIT_TIME);
-
+    int fps = getFPS(100);
+    if (fps)
+    {
+        SDL_Log("%d\n", fps);
+    }
     // Cursor Position
     SDL_GetMouseState(&mousepos.x, &mousepos.y);
-    static Tile destTile, originalTile;
+    static Tile destTile, originalTile, *validDest;
     static int result = INVALID;
+    static int destOptions, *validCounters;
+    static char pawnoGo = PROMODEFAULT;
+    static Uint64 savedTime = 0;
+    if (!allMoves)
+        allMoves = selectionPool(*playerPieces, *opponentPieces, player);
 
-    // Select tile
     if (rightMouseclick)
     {
         Tile mouseTile = TileFromPos(mousepos);
         TileNode *selectedTile = nodeFromTile(mouseTile, headLightTile, headDarkTile);
-        if (selectedTile != NULL)
+        if (selectedTile)
             selectedTile->selected = !(selectedTile->selected);
     }
 
-    /*Select a piece.*/
     if (leftMouseclick)
     {
-        Tile mouseTile = TileFromPos(mousepos);
-        playerPiece = pieceFromTile(mouseTile, *playerPieces, NULL);
-        opponentPiece = pieceFromTile(mouseTile, *opponentPieces, NULL); // COUNTS AS INVALID MOVE.
+        /*Select a piece.*/
         unselectAll(headDarkTile, headLightTile);
-
-        if (playerPiece.ptr && !(mate || stale))
-        { /*Possible moves*/
-            int balls;
-            Tile *foundMoves = validMoves(playerPiece, *playerPieces, *opponentPieces, player, &balls);
-
-            for (int x = 0; x < balls; x++)
+        Tile mouseTile = TileFromPos(mousepos);
+        if (player == HUMAN)
+            playerPiece = pieceFromTile(mouseTile, *playerPieces, NULL);
+        opponentPiece = pieceFromTile(mouseTile, *opponentPieces, NULL);
+        /*Highlight destination options.*/
+        if (playerPiece.ptr && !(mate || stale) && allMoves)
+        {
+            validDest = tileFromPool(playerPiece, allMoves, &destOptions, &validCounters);
+            for (int a = 0; a < destOptions; a++)
             {
-                TileNode *foundTile = nodeFromTile(foundMoves[x], headLightTile, headDarkTile);
-                if (foundTile)
-                    foundTile->selected = true;
+                TileNode *foundNode = nodeFromTile(validDest[a], headDarkTile, headLightTile);
+                if (foundNode)
+                    foundNode->selected = true;
             }
-            SDL_free(foundMoves);
         }
     }
 
@@ -251,93 +255,74 @@ bool update(void)
     /**Validate and make move */
     if (leftMouseRelease)
     {
-        // No evaluation occurs
         if (!playerPiece.ptr ||
-            mate || stale)
+            mate || stale || player == BOT)
         {
             if (mate)
                 SDL_Log("MATE");
             if (stale)
                 SDL_Log("Stale");
-            result = INVALID;
         }
-
         // Evaluation
         else
         {
             destTile = TileFromPos(mousepos);
             originalTile = playerPiece.ptr->pos[playerPiece.index];
-            initMove(playerPiece, originalTile, destTile, player, *playerPieces, *opponentPieces);
-            result = finalizeMove(true, &checkStatus);
+            for (int k = 0; k < destOptions; k++)
+            {
+                if (destTile.x == validDest[k].x &&
+                    destTile.y == validDest[k].y)
+                {
+                    result = validCounters[k];
+                    break;
+                }
+            }
         }
-
         if (result == INVALID)
         {
             if (playerPiece.ptr)
                 untrackMouse(playerPiece);
             if (opponentPiece.ptr)
                 untrackMouse(opponentPiece);
+        }
+    }
+
+    if (player == BOT)
+    {
+        if (mate || stale)
             return true;
-        }
+        if (!savedTime)
+            savedTime = SDL_GetTicks();
+        if (SDL_GetTicks() - savedTime < BOT_DELAY)
+            return true;
+        savedTime = 0;
+        destTile = randomMoveFromPool(allMoves, &playerPiece, &result);
+        originalTile = playerPiece.ptr->pos[playerPiece.index];
+    }
 
+    if (result)
+    {
+        initMove(playerPiece, originalTile, destTile, player,
+                 *playerPieces, *opponentPieces, pawnoGo);
+        fullLogicUpdate(result, &checkStatus);
         playRightSound(checkStatus, result);
-        int yValueOfPiece = player ? WHITE_Y : BLACK_Y;
-
-        /*Handle result*/
-
-        Tile rooksTile, rookDest;
-        Piece rookPiece;
-        char knownPiece = ROOK_NAME;
-        if (result != PROMOTION && result != PROMOTION_CAPTURE)
-            movePiece(playerPiece, destTile);
-        else
-            promotePiece(playerPiece, 'Q', *playerPieces, destTile);
-        switch (result)
-        {
-        case VALID: // Move no capture
-            break;
-        case VALID_CAPTURE: // Move + capture
-            deletePiece(pieceFromTile(destTile, *opponentPieces, NULL));
-            break;
-        case KINGSIDE_CASTLING: // Castle KingSide
-            rooksTile = (Tile){ROOK_X[1], yValueOfPiece};
-            rookDest = (Tile){6, yValueOfPiece};
-
-            rookPiece = pieceFromTile(rooksTile, *playerPieces, &knownPiece);
-            movePiece(rookPiece, rookDest);
-            break;
-        case QUEENSIDE_CASTLING: // Castle QueenSide
-            rooksTile = (Tile){ROOK_X[0], yValueOfPiece};
-            rookDest = (Tile){4, yValueOfPiece};
-            rookPiece = pieceFromTile(rooksTile, *playerPieces, &knownPiece);
-            movePiece(rookPiece, rookDest);
-            break;
-        case ENPASSANT: // enpassant
-            Tile niceEn = (Tile){destTile.x, destTile.y + (player ? -1 : 1)};
-            deletePiece(pieceFromTile(niceEn, *opponentPieces, NULL));
-            break;
-        case PROMOTION:
-            break;
-        case PROMOTION_CAPTURE:
-            deletePiece(pieceFromTile(destTile, *opponentPieces, NULL));
-            break;
-        default:
-            SDL_Log("That move has not been set up yet\n");
-            break;
-        }
+        performMove(result, playerPiece, destTile, pawnoGo, playerPieces, opponentPieces, player);
         checkedMate = false;
-        unselectAll(headDarkTile, headLightTile);
+        result = INVALID;
     }
 
     /**Check if your opponent has a move */
     if (!checkedMate)
     {
+        unselectAll(headDarkTile, headLightTile);
+        freeMoves(allMoves);
+        allMoves = NULL;
         bool enemyBool = !player;
         bool cantPlay = checkMate(*playerPieces, *opponentPieces, enemyBool);
         mate = cantPlay && checkStatus;
         stale = cantPlay && !checkStatus;
         recordMovesyntax(playerPiece, originalTile, destTile, *playerPieces,
-                         *opponentPieces, result, checkStatus, mate, enemyBool);
+                         *opponentPieces, result, checkStatus, mate, enemyBool, pawnoGo);
         if (mate || stale)
         {
             playGameEndAudio();
@@ -351,6 +336,7 @@ bool update(void)
         /*For side selection*/
         playerPieces = player ? &whiteHeadPiece : &blackHeadPiece;
         opponentPieces = !player ? &whiteHeadPiece : &blackHeadPiece;
+        playerPiece = NULL_PIECE;
     }
 
     return true;
@@ -403,16 +389,16 @@ int main()
 {
     launch();
     if (running)
-    {
         setup();
-    }
 
     // Game Loop
     while (running)
     {
         process_input();
+
         if (!update())
             running = false;
+
         if (!render())
             running = false;
     }

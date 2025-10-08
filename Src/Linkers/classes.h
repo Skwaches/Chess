@@ -22,7 +22,6 @@ typedef struct PieceNode
     Tile *pos;
     SDL_FRect *rect;
     SDL_Texture *texture;
-    struct PieceNode *prev;
     struct PieceNode *next;
 } PieceNode;
 
@@ -38,4 +37,11 @@ typedef struct CastlingOptions
     bool kingside;
 } CastlingOptions;
 
+typedef struct Move
+{
+    PieceNode *pieces;
+    Tile **dreams;
+    int **valids;
+    int *no;
+} Move;
 #endif

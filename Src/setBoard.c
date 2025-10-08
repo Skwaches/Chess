@@ -136,16 +136,19 @@ PieceNode *makePieceNode(SDL_Renderer *renderer,
     // tempPiece->noInPlay = appearances;
     tempPiece->appearances = appearsNo;
     tempPiece->type = name;
-    Tile *positions = SDL_malloc((appearsNo + PAWN_NO) * sizeof(Tile));
+    size_t Maxappearances = (name == PAWN_NAME ||
+                             name == KING_NAME)
+                                ? appearsNo
+                                : (appearsNo + PAWN_NO);
+    Tile *positions = SDL_malloc(Maxappearances * sizeof(Tile));
     if (positions == NULL)
         return NULL;
-
     for (int p = 0; p < appearsNo; p++)
         positions[p] = (Tile){x[p], y};
 
     tempPiece->pos = positions;
     tempPiece->texture = maketexture(renderer, buffer);
-    tempPiece->rect = SDL_malloc(sizeof(SDL_FRect) * (appearsNo + PAWN_NO));
+    tempPiece->rect = SDL_malloc(sizeof(SDL_FRect) * (Maxappearances));
     if (tempPiece->texture == NULL)
     {
         SDL_free(positions);
@@ -159,7 +162,6 @@ PieceNode *makePieceNode(SDL_Renderer *renderer,
     }
     for (int k = 0; k < tempPiece->appearances; k++)
         tempPiece->rect[k] = rectFromTile(tempPiece->pos[k]);
-
     return tempPiece;
 }
 
@@ -176,12 +178,14 @@ PieceNode *setPieces(SDL_Renderer *renderer, bool colour, const char *Path)
         return NULL;
     size_t pieceNodeSize = sizeof(PieceNode);
     PieceNode *tempPiece = HeadPiece;
-    PieceNode *prevPiece = NULL;
+
     // BASE VALUES FOR FAILURE
     tempPiece->next = NULL;
-    tempPiece->prev = prevPiece;
-    tempPiece->appearances = 1;
+    tempPiece->appearances = 0;
     tempPiece->texture = NULL;
+    tempPiece->pos = NULL;
+    tempPiece->rect = NULL;
+    tempPiece->type = 'i';
 
     pieces = SDL_GlobDirectory(Path, NULL, 0, &itemcount);
     if (pieces == NULL)
@@ -190,95 +194,155 @@ PieceNode *setPieces(SDL_Renderer *renderer, bool colour, const char *Path)
         return NULL;
     }
 
+    Uint8 noLoaded = 0;
     for (int i = 0; i < itemcount; i++)
     {
+
         SDL_snprintf(buffer, sizeof(buffer), "%s/%s", Path, pieces[i]);
-        if (SDL_strcmp(pieces[i], BISHOP_FILE_NAME) == 0)
+        if (!SDL_strcmp(pieces[i], BISHOP_FILE_NAME))
         {
-            if (makePieceNode(renderer, buffer, tempPiece, BISHOP_NO, BISHOP_NAME, BISHOP_X, sideY) == NULL)
-            {
-                SDL_free(pieces);
-                freePieces(HeadPiece);
-                return NULL;
-            };
-        }
-        else if (SDL_strcmp(pieces[i], KING_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, KING_NO, KING_NAME, KING_X, sideY) == NULL)
+            if (!makePieceNode(renderer, buffer, tempPiece,
+                               BISHOP_NO, BISHOP_NAME, BISHOP_X, sideY))
             {
                 SDL_free(pieces);
                 freePieces(HeadPiece);
                 return NULL;
             }
-        }
-        else if (SDL_strcmp(pieces[i], KNIGHT_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, KNIGHT_NO,
-                              KNIGHT_NAME, KNIGHT_X, sideY) == NULL)
+            noLoaded++;
+            if (noLoaded < PIECETYPES)
             {
-
+                tempPiece->next = SDL_malloc(pieceNodeSize);
+                if (!tempPiece->next)
+                {
+                    freePieces(HeadPiece);
+                    break;
+                }
+                tempPiece = tempPiece->next;
+            }
+            if (noLoaded == PIECETYPES)
+                break;
+        }
+        if (!SDL_strcmp(pieces[i], KING_FILE_NAME))
+        {
+            if (!makePieceNode(renderer, buffer, tempPiece,
+                               KING_NO, KING_NAME, KING_X, sideY))
+            {
                 SDL_free(pieces);
                 freePieces(HeadPiece);
                 return NULL;
             }
-        }
-        else if (SDL_strcmp(pieces[i], PAWN_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, PAWN_NO, PAWN_NAME, PAWN_X, pawnY) == NULL)
+            noLoaded++;
+            if (noLoaded < PIECETYPES)
             {
-
-                SDL_free(pieces);
-                freePieces(HeadPiece);
-                return NULL;
+                tempPiece->next = SDL_malloc(pieceNodeSize);
+                if (!tempPiece->next)
+                {
+                    freePieces(HeadPiece);
+                    break;
+                }
+                tempPiece = tempPiece->next;
             }
+            if (noLoaded == PIECETYPES)
+                break;
         }
-        else if (SDL_strcmp(pieces[i], QUEEN_FILE_NAME) == 0)
+        if (!SDL_strcmp(pieces[i], KNIGHT_FILE_NAME))
         {
-
-            if (makePieceNode(renderer, buffer, tempPiece, QUEEN_NO, QUEEN_NAME, QUEEN_X, sideY) == NULL)
-            {
-
-                SDL_free(pieces);
-                freePieces(HeadPiece);
-                return NULL;
-            }
-        }
-        else if (SDL_strcmp(pieces[i], ROOK_FILE_NAME) == 0)
-        {
-            if (makePieceNode(renderer, buffer, tempPiece, ROOK_NO, ROOK_NAME, ROOK_X, sideY) == NULL)
+            if (!makePieceNode(renderer, buffer, tempPiece,
+                               KNIGHT_NO, KNIGHT_NAME, KNIGHT_X, sideY))
             {
 
                 SDL_free(pieces);
                 freePieces(HeadPiece);
                 return NULL;
             }
+            noLoaded++;
+            if (noLoaded < PIECETYPES)
+            {
+                tempPiece->next = SDL_malloc(pieceNodeSize);
+                if (!tempPiece->next)
+                {
+                    freePieces(HeadPiece);
+                    break;
+                }
+                tempPiece = tempPiece->next;
+            }
+            if (noLoaded == PIECETYPES)
+                break;
         }
-        else
+        if (!SDL_strcmp(pieces[i], PAWN_FILE_NAME))
         {
-            continue;
+            if (!makePieceNode(renderer, buffer, tempPiece,
+                               PAWN_NO, PAWN_NAME, PAWN_X, pawnY))
+            {
+                SDL_free(pieces);
+                freePieces(HeadPiece);
+                return NULL;
+            }
+            noLoaded++;
+            if (noLoaded < PIECETYPES)
+            {
+                tempPiece->next = SDL_malloc(pieceNodeSize);
+                if (!tempPiece->next)
+                {
+                    freePieces(HeadPiece);
+                    break;
+                }
+                tempPiece = tempPiece->next;
+            }
+            if (noLoaded == PIECETYPES)
+                break;
         }
-
-        // Previous Piece
-        tempPiece->prev = prevPiece;
-        prevPiece = tempPiece;
-        // Next Piece?
-        if (i == itemcount - 1)
+        if (!SDL_strcmp(pieces[i], QUEEN_FILE_NAME))
         {
-            SDL_free(pieces);
-            tempPiece->next = NULL;
-            break;
-        }
+            if (!makePieceNode(renderer, buffer, tempPiece,
+                               QUEEN_NO, QUEEN_NAME, QUEEN_X, sideY))
+            {
 
-        tempPiece->next = SDL_malloc(pieceNodeSize);
-        if (tempPiece->next == NULL)
+                SDL_free(pieces);
+                freePieces(HeadPiece);
+                return NULL;
+            }
+            noLoaded++;
+            if (noLoaded < PIECETYPES)
+            {
+                tempPiece->next = SDL_malloc(pieceNodeSize);
+                if (!tempPiece->next)
+                {
+                    freePieces(HeadPiece);
+                    break;
+                }
+                tempPiece = tempPiece->next;
+            }
+            if (noLoaded == PIECETYPES)
+                break;
+        }
+        if (!SDL_strcmp(pieces[i], ROOK_FILE_NAME))
         {
+            if (!makePieceNode(renderer, buffer, tempPiece,
+                               ROOK_NO, ROOK_NAME, ROOK_X, sideY))
+            {
 
-            SDL_free(pieces);
-            freePieces(HeadPiece);
-            return NULL;
+                SDL_free(pieces);
+                freePieces(HeadPiece);
+                return NULL;
+            }
+            noLoaded++;
+            if (noLoaded < PIECETYPES)
+            {
+                tempPiece->next = SDL_malloc(pieceNodeSize);
+                if (!tempPiece->next)
+                {
+                    freePieces(HeadPiece);
+                    break;
+                }
+                tempPiece = tempPiece->next;
+            }
+            if (noLoaded == PIECETYPES)
+                break;
         }
-        tempPiece = tempPiece->next;
     }
+    tempPiece->next = NULL;
+    SDL_free(pieces);
     return HeadPiece;
 }
 
@@ -305,23 +369,17 @@ void freePieces(PieceNode *Headnode)
 // Call SDL_GetError for info
 bool renderPieces(SDL_Renderer *renderer, PieceNode *HeadPiece)
 {
-    PieceNode *TempPiece = HeadPiece;
-    while (TempPiece != NULL)
-    {
-        for (int a = 0; a < TempPiece->appearances; a++)
+    for (PieceNode *tempie = HeadPiece; tempie; tempie = tempie->next)
+        for (int a = 0; a < tempie->appearances; a++)
         {
-            /** Won't render if:
-             * Texture is NULL
-             * Item in SHADOW_REALM
-             * Stops if render fails*/
-            if ((TempPiece->texture != NULL) &&
-                (TempPiece->pos[a].x != SHADOW_REALM.x) &&
-                (TempPiece->pos[a].y != SHADOW_REALM.y) &&
-                (!SDL_RenderTexture(renderer, TempPiece->texture, NULL, &TempPiece->rect[a])))
+            if (tempie->pos[a].x == SHADOW_REALM.x ||
+                tempie->pos[a].y == SHADOW_REALM.y)
+                continue;
+
+            bool ok = SDL_RenderTexture(renderer, tempie->texture, NULL, &tempie->rect[a]);
+            if (!ok)
                 return false;
         }
-        TempPiece = TempPiece->next;
-    }
     return true;
 }
 
@@ -342,6 +400,7 @@ void resetPieces(PieceNode *family, bool player)
     const int pVal = player ? WPAWNY : BPAWNY;
     int *x_Vals;
     int sel_Y;
+    int apperances;
     for (PieceNode *Head = family; Head; Head = Head->next)
     {
         sel_Y = yVal;
@@ -349,28 +408,35 @@ void resetPieces(PieceNode *family, bool player)
         {
         case PAWN_NAME:
             x_Vals = PAWN_X;
+            apperances = PAWN_NO;
             sel_Y = pVal;
             break;
         case KING_NAME:
             x_Vals = KING_X;
+            apperances = KING_NO;
             break;
         case QUEEN_NAME:
+            apperances = QUEEN_NO;
             x_Vals = QUEEN_X;
             break;
         case ROOK_NAME:
+            apperances = ROOK_NO;
             x_Vals = ROOK_X;
             break;
         case BISHOP_NAME:
+            apperances = BISHOP_NO;
             x_Vals = BISHOP_X;
             break;
         case KNIGHT_NAME:
+            apperances = KNIGHT_NO;
             x_Vals = KNIGHT_X;
             break;
         default:
             SDL_Log("Unknown Piece");
             break;
         }
-        for (int p = 0; p < Head->appearances; p++)
+        Head->appearances = apperances;
+        for (int p = 0; p < apperances; p++)
             Head->pos[p] = (Tile){x_Vals[p], sel_Y};
         redrawFamily(family);
     }

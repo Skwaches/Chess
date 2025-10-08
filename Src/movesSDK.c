@@ -145,7 +145,7 @@ int realX(char letter)
 
 bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile,
                       PieceNode *family, PieceNode *enemy,
-                      int result, bool check, bool mate, bool player)
+                      int result, bool check, bool mate, bool player, char chosenPiece)
 {
     char moveMade[MAX_MOVE_SYNTAX];
     Tile origTile = originalTile;
@@ -162,7 +162,7 @@ bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile,
     char destRank = '\0';
 
     char promotion = (result == PROMOTION || result == PROMOTION_CAPTURE) ? '=' : '\0';
-    char promoRes = '\0';
+    char promoRes = (result == PROMOTION || result == PROMOTION_CAPTURE) ? chosenPiece : '\0';
 
     char materive = mate ? '#' : '\0';
     char checkive = (!mate && check) ? '+' : '\0';
@@ -203,10 +203,9 @@ bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile,
             bool sameFile = peace.ptr->pos[a].x == originalTile.x;
             bool sameRank = peace.ptr->pos[a].y == originalTile.y;
             Piece tmpPeace = {peace.ptr, a};
-            initMove(tmpPeace, tmpPeace.ptr->pos[a], destTile, player, family, enemy);
-            if (finalizeMove(false, NULL) != INVALID)
+            initMove(tmpPeace, tmpPeace.ptr->pos[a], destTile, player, family, enemy, chosenPiece);
+            if (finalizeMove() != INVALID)
             {
-                SDL_Log("Hello");
                 if (!(sameRank || sameFile))
                     sameRank = true;
                 if (sameRank)

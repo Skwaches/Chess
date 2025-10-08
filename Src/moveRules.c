@@ -7,7 +7,7 @@ static Piece movedPiece;
 static bool playerBool; /*True if white.*/
 static PieceNode *playerFamily, *opponentFamily;
 static Tile destTile;
-static char chosenPromo = 'Q';
+static char chosenPromo = PROMODEFAULT;
 /**
  * Derived variables
  * Their values are entirely dependent on the initiate values.
@@ -24,7 +24,6 @@ static Tile *tmpFakeMove2 = NULL;
 static Tile *tmpFakeMove3 = NULL;
 static CastlingOptions *playerCastling;
 static Piece tmpPieceFromTile;
-
 /**
  * Storage items.
  * These should only be changed when the move is valid.
@@ -33,7 +32,7 @@ static CastlingOptions whiteCastling = {true, true};
 static CastlingOptions blackCastling = {true, true};
 static Tile whiteKingsTile = {5, WHITE_Y};
 static Tile blackKingsTile = {5, BLACK_Y};
-static Piece enPawn = {NULL, -1};
+static Piece enPawn = NULL_PIECE;
 static bool noCastling = false;
 static bool enpassable = false;
 
@@ -59,7 +58,7 @@ void saveInit(void)
 
 void resetInit(void)
 {
-    initMove(tmpMovedPiece, tmpOrigTile, tmpDestTile, tmpPlayerBool, tmpPlayerFamily, tmpOpponentFamily);
+    initMove(tmpMovedPiece, tmpOrigTile, tmpDestTile, tmpPlayerBool, tmpPlayerFamily, tmpOpponentFamily, chosenPromo);
 }
 
 /*Resets logic local storage to initial conditions*/
@@ -69,7 +68,7 @@ void resetStorage(void)
     blackCastling = (CastlingOptions){true, true};
     whiteKingsTile = (Tile){5, WHITE_Y};
     blackKingsTile = (Tile){5, BLACK_Y};
-    enPawn = (Piece){NULL, -1};
+    enPawn = NULL_PIECE;
     noCastling = false;
     enpassable = false;
 }
@@ -81,7 +80,7 @@ void resetStorage(void)
 
 bool initMove(Piece selectedPiece, Tile originalTile /*It doesn't recalculate without this.*/, Tile globalDest, // Doesn't include check logic///
               bool Currentplayer /*True if white.*/,
-              PieceNode *family, PieceNode *enemy)
+              PieceNode *family, PieceNode *enemy, char selectPromo)
 {
     if (family == NULL || enemy == NULL)
     {
@@ -95,6 +94,7 @@ bool initMove(Piece selectedPiece, Tile originalTile /*It doesn't recalculate wi
     playerBool = Currentplayer;
     playerFamily = family;
     opponentFamily = enemy;
+    chosenPromo = selectPromo;
     if (movedPiece.ptr == NULL || movedPiece.index < 0 ||
         movedPiece.index >= movedPiece.ptr->appearances)
     {
@@ -145,7 +145,7 @@ bool skippingPiece(void)
  */
 Piece pieceFromTile(Tile searchPoint, PieceNode *pieceFamily, char *pieceName)
 {
-    Piece pieceFoundOnTile = {NULL, -1};
+    Piece pieceFoundOnTile = NULL_PIECE;
     bool pieceKnown = pieceName;
     for (PieceNode *friend = pieceFamily; friend; friend = friend->next)
     {
@@ -172,68 +172,49 @@ bool TileHasOccupant(Tile dest, PieceNode *pieceFamily)
 }
 
 #pragma region Piece Rules
-int validateGeneralMoverules(void)
+bool validateGeneralMoverules(void)
 {
-    // Move has to be within board (0-0)::::: DONE
-    if (destTile.x > X_TILES || destTile.y > Y_TILES ||
-        destTile.y < 1 || destTile.x < 1)
-        return false;
-
-    // Only Knight can jump pieces
     if (movedPiece.ptr->type != KNIGHT_NAME && skippingPiece())
         return false;
-
+    if (destTile.x > X_TILES || destTile.y > Y_TILES ||
+        destTile.x < 1 || destTile.y < 1)
+        return false;
     if (TileHasOccupant(destTile, playerFamily))
         return false;
-    /**Move has to be X_tiles && Y-tiles or less....
-     * This is a shit work around for the fakedelete.
-     * Might not be necessarry.
-     * Don't delete preferrably.
-     */
     if (xDisplacement > X_TILES || yDisplacement > Y_TILES)
         return false;
-    // You cannot capture your own piece.
 
     return true;
 }
 int validatePawnMove(void)
 {
-    /**can't move more than two spaces forward.
-     * Forward for white and black is differentIndexing works like cartesian plane.
-     * Origin is (1,1) {white's left}.
-     */
     const int OrigPawnY = playerBool ? WPAWNY : BPAWNY;
-    // Forward movement or One Diagonal
-    if (xDisplacement > 1 || yDisplacement > 2 || (playerBool ? (yVector <= 0) : (yVector >= 0)))
+    if (xDisplacement > 1 || yDisplacement > 2 ||
+        (playerBool ? (yVector <= 0) : (yVector >= 0)))
         return INVALID;
-    /*Capture must be diagonal.*/
-    if (capturing && !xDisplacement)
-        return INVALID;
+
     if (yDisplacement == 2 && (xDisplacement || (origTile.y != OrigPawnY)))
         return INVALID;
 
-    // yDisplacement == 1
-    // Capturing
-    if (xDisplacement)
-    {
-        if (!capturing) /*Check enpassant*/
-        {
-            if (enPawn.ptr != NULL)
-            {
-                int dir = playerBool ? 1 : -1;
-                Tile enDest = {enPawn.ptr->pos[enPawn.index].x, enPawn.ptr->pos[enPawn.index].y + dir};
-                if (enpassable && (destTile.x == enDest.x) && (destTile.y == enDest.y))
-                    return ENPASSANT;
-                return INVALID;
-            }
-            return INVALID;
-        }
-    }
-    // Can't capture without xDisplacement
-    else if (capturing)
+    if (!xDisplacement && capturing)
         return INVALID;
+
+    if (xDisplacement && !capturing)
+    {
+        if (enPawn.ptr != NULL)
+        {
+            int dir = playerBool ? 1 : -1;
+            Tile enDest = {enPawn.ptr->pos[enPawn.index].x,
+                           enPawn.ptr->pos[enPawn.index].y + dir};
+            if (enpassable && (destTile.x == enDest.x) && (destTile.y == enDest.y))
+                return ENPASSANT;
+        }
+        return INVALID;
+    }
+
     if (destTile.y == 1 || destTile.y == Y_TILES)
         return PROMOTION + capturing;
+
     return VALID + capturing;
 }
 int validateKingMove(void)
@@ -273,11 +254,8 @@ int validateKingMove(void)
 }
 int validateRookMove(void)
 {
-    // Vertical and Horizontal Paths
-    // Can't Jump Pieces
     if ((xDisplacement && yDisplacement))
         return INVALID;
-
     return VALID + capturing;
 }
 int validateBishopMove(void)
@@ -289,7 +267,8 @@ int validateBishopMove(void)
 }
 int validateKnightMove(void)
 {
-    if ((xDisplacement == 2 && yDisplacement == 1) || (xDisplacement == 1 && yDisplacement == 2))
+    if ((xDisplacement == 2 && yDisplacement == 1) ||
+        (xDisplacement == 1 && yDisplacement == 2))
         return (VALID + capturing);
     return INVALID;
 }
@@ -321,6 +300,7 @@ int performValidation()
     case KNIGHT_NAME:
         return validateKnightMove();
     default:
+        SDL_Log("That Piece is unknown : %c", movedPiece.ptr->type);
         return INVALID;
     }
 }
@@ -476,12 +456,14 @@ bool setBadCheck(Tile kingersTile)
     bool savedPlayer = !playerBool;
     PieceNode *friendlies = playerFamily;
     PieceNode *enemies = opponentFamily;
+    char myPromo = chosenPromo;
     for (PieceNode *Head = enemies; Head; Head = Head->next)
     {
         for (int a = 0; a < Head->appearances; a++)
         {
             Piece tempPiece = {Head, a};
-            if (initMove(tempPiece, Head->pos[a], kingersTile, savedPlayer, enemies, friendlies))
+            if (initMove(tempPiece, Head->pos[a], kingersTile,
+                         savedPlayer, enemies, friendlies, myPromo))
                 if (performValidation() != INVALID)
                     return true;
         }
@@ -499,12 +481,13 @@ bool setCheck(void)
     bool savedPlayer = playerBool;
     PieceNode *friendlies = playerFamily;
     PieceNode *enemies = opponentFamily;
+    char myPromo = chosenPromo;
     for (PieceNode *Head = friendlies; Head; Head = Head->next)
     {
         for (int a = 0; a < Head->appearances; a++)
         {
             Piece tempPiece = {Head, a};
-            if (initMove(tempPiece, Head->pos[a], savedKingsTile, savedPlayer, friendlies, enemies))
+            if (initMove(tempPiece, Head->pos[a], savedKingsTile, savedPlayer, friendlies, enemies, myPromo))
                 if (performValidation() != INVALID)
                     return true;
         }
@@ -550,7 +533,7 @@ void enpassantTimer(void)
     /*Set enpassant timing.*/
     if (enpassable)
     {
-        enPawn = (Piece){NULL, -1};
+        enPawn = NULL_PIECE;
         enpassable = false;
     }
     if (enPawn.ptr != NULL)
@@ -580,7 +563,7 @@ bool castleThroughCheck(int Originalvalid)
     }
     Tile tileJumped = {KING_X[0] + dir, origTile.y};
     saveInit();
-    initMove(movedPiece, origTile, tileJumped, playerBool, playerFamily, opponentFamily);
+    initMove(movedPiece, origTile, tileJumped, playerBool, playerFamily, opponentFamily, chosenPromo);
     fakePlay(VALID);
     bool HopperScotch = setBadCheck(tileJumped);
     resetInit();
@@ -589,16 +572,6 @@ bool castleThroughCheck(int Originalvalid)
 }
 
 /**
- * CHESS RULES
- * It runs base of the most recently supplied values.
- * \param updateState determines whether the validation storage should be updated.
- * \param causeCheck changes it's value to whether move causes check. Does nothing if NULL.
- * i.e Whether there the move will be made on the board or not.
- * If set to false the board state will not change on the validation end.
- * Don't change state on front-end if this is set to false.
- * \param bot Whether the bot is validating or not.
- * Set true only for the bot.
- * The level of validation performed is less thorough when true.
  * \returns
  * INVALID for invalid move.
  * VALID for no capture.
@@ -606,8 +579,10 @@ bool castleThroughCheck(int Originalvalid)
  * KINGSIDE_CASTLING for castling kingSide.
  * QUEENSIDE_CASTLING for castling queensSide.
  * ENPASSANT for enpassant
+ * PROMOTION for a promotion.
+ * PROMOTION_CAPTURE for capture resulting in promotion.
  * */
-int finalizeMove(bool updateState, bool *causeCheck)
+int finalizeMove(void)
 {
     saveInit();
     int calculatedvalid = performValidation();
@@ -615,24 +590,31 @@ int finalizeMove(bool updateState, bool *causeCheck)
         return INVALID;
 
     fakePlay(calculatedvalid);
-    if (causeCheck)
-        *causeCheck = setCheck();
-    if (updateState)
-        noCastling = setCheck(); /*Can't castle when in check*/
     bool badCheck = setBadCheck(tmpKingsTile);
     resetInit();
-
     unfakePlay();
-
     bool jumpedCheck = castleThroughCheck(calculatedvalid);
-
-    if (badCheck || jumpedCheck)
-        return INVALID;
-    if (updateState)
+    if (badCheck)
     {
-        updateStorage();
-        enpassantTimer();
+        return INVALID;
     }
-
+    if (jumpedCheck)
+    {
+        return INVALID;
+    }
     return calculatedvalid;
+}
+
+/*This should be called before the move has been made*/
+void fullLogicUpdate(int valid, bool *cheekers)
+{
+    saveInit();
+    fakePlay(valid);
+    noCastling = setCheck(); /*Can't castle when in check*/
+    resetInit();
+    if (cheekers)
+        *cheekers = noCastling;
+    unfakePlay();
+    updateStorage();
+    enpassantTimer();
 }

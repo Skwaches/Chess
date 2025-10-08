@@ -18,23 +18,23 @@
 #define WPAWNY (WHITE_Y + 1)
 
 // FPS
-#define FPS 100.0
+#define FPS 1000.0
 #define WAIT_TIME ((1 / FPS) * 1000.0)
 #define LIMIT_FPS false
-// PATHS
 
+// PATHS
 #define WHITE_PIECES_PATH "../Assets/Visual/Pieces/White"
 #define BLACK_PIECES_PATH "../Assets/Visual/Pieces/Black"
 
 #define SOUNDS_PATH "../Assets/Audio/Sound"
 #define MUSIC_PATH "../Assets/Audio/Music"
-
 #define MAX_NAME_LENGTH 10
 #define MAX_ASSET_PATH 100
 #define MAX_MOVE_SYNTAX 40
 #define MAX_COMMAND_LENGTH 128
 #define MAX_POSSIBLE_MOVES (int)(X_TILES * Y_TILES) / 2
 #define MAX_TOTAL_POSSIBLE_MOVES 128
+
 // IMAGE FORMAT
 #define SVG_WIDTH TILE_WIDTH
 #define SVG_HEIGHT TILE_HEIGHT
@@ -46,6 +46,7 @@
 #define ROOK_FILE_NAME "rook.svg"
 #define KNIGHT_FILE_NAME "knight.svg"
 #define PAWN_FILE_NAME "pawn.svg"
+#define PIECETYPES 6
 
 // SOUND FILE NAMES
 #define CAPTURE_SOUND_FILE_NAME "capture.mp3"
@@ -78,6 +79,14 @@
 #define PROMOTION 6
 #define PROMOTION_CAPTURE 7
 
+/*White is true. Black is false;*/
+#define STARTSIDE true;
+#define HUMAN false
+#define BOT true
+#define BOT_DELAY 1000
+#define PROMODEFAULT QUEEN_NAME
+
+#define NULL_PIECE (Piece){NULL, -1}
 // DELETE PIECE
 extern const Tile SHADOW_REALM;
 
@@ -102,5 +111,4 @@ extern const int QUEEN_NO;
 extern const int ROOK_NO;
 extern const int KNIGHT_NO;
 extern const int PAWN_NO;
-
 #endif
