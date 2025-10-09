@@ -1,6 +1,7 @@
+
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
-#include "classes.h"
+#include "funcs.h"
 // SCREEN
 #define SCREENWIDTH 1000
 #define SCREENHEIGHT 1000
@@ -10,6 +11,7 @@
 // BOARD
 #define TILE_WIDTH (SCREENWIDTH / X_TILES)
 #define TILE_HEIGHT (SCREENHEIGHT / Y_TILES)
+#define PIECE_ZOOM 20 /*This is the size of a selected piece.*/
 
 // PIECES RANK
 #define BLACK_Y Y_TILES
@@ -17,17 +19,22 @@
 #define WHITE_Y 1
 #define WPAWNY (WHITE_Y + 1)
 
-// FPS
-#define FPS 1000.0
-#define WAIT_TIME ((1 / FPS) * 1000.0)
+// FPS_CAP
+#define FPS_CAP 1500.0
+#define WAIT_TIME ((1 / FPS_CAP) * 1000.0)
 #define LIMIT_FPS true
 
 // PATHS
-#define WHITE_PIECES_PATH "../Assets/Visual/Pieces/White"
-#define BLACK_PIECES_PATH "../Assets/Visual/Pieces/Black"
-
-#define SOUNDS_PATH "../Assets/Audio/Sound"
-#define MUSIC_PATH "../Assets/Audio/Music"
+/*Note Assumption is that game is running from build.*/
+#define ASSETS_PATH                   "../assets/"
+#define DATABASE_PATH ASSETS_PATH     "moves.db"
+#define VISUAL_PATH ASSETS_PATH       "visual/"
+#define AUDIO_PATH ASSETS_PATH        "audio/"
+#define PIECES_PATH VISUAL_PATH       "pieces/"
+#define WHITE_PIECES_PATH PIECES_PATH "white"
+#define BLACK_PIECES_PATH PIECES_PATH "black"
+#define SOUNDS_PATH AUDIO_PATH        "sound"
+#define MUSIC_PATH AUDIO_PATH         "music"
 #define MAX_NAME_LENGTH 10
 #define MAX_ASSET_PATH 100
 #define MAX_MOVE_SYNTAX 40
@@ -42,7 +49,7 @@
 // IMAGE FILE NAME
 #define KING_FILE_NAME "king.svg"
 #define BISHOP_FILE_NAME "bishop.svg"
-#define QUEEN_FILE_NAME "queen.svg"
+#define QUEEN_FILE_NAME "amazon.svg"
 #define ROOK_FILE_NAME "rook.svg"
 #define KNIGHT_FILE_NAME "knight.svg"
 #define PAWN_FILE_NAME "pawn.svg"
@@ -83,9 +90,8 @@
 #define STARTSIDE true
 #define HUMAN true
 #define BOT !HUMAN
-#define DATABASE_FILE_NAME "../Moves.db"
-#define BOT_DELAY 500 /*Time is in ms*/
-#define BOT_ACCEL 8   /*By what factor should the BOT_DELAY be reduced by. should not be less than 1*/
+#define BOT_DELAY 1000 /*Time is in ms*/
+#define BOT_ACCEL 8    /*By what factor should the BOT_DELAY be reduced by. should not be less than 1*/
 #define PROMODEFAULT QUEEN_NAME
 #define SELFPLAY false
 #define LIMIT_GAMES false
@@ -93,7 +99,8 @@
 #define LIMIT_MOVES_PER_GAME false
 #define MAX_MOVES_PER_GAME 100
 #define NULL_PIECE (Piece){NULL, -1}
-
+#define AUTOSTART_NEWGAME false
+#define LOCAL_GAME true
 // DELETE PIECE
 extern const Tile SHADOW_REALM;
 

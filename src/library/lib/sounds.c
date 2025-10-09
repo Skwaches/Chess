@@ -1,5 +1,4 @@
-#include "Linkers/funcs.h"
-
+#include "../links/funcs.h"
 static MIX_Mixer *ChessMixer;
 static MIX_Track *sfxTrack;
 static MIX_Track *otherTrack;

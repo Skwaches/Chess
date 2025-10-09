@@ -1,4 +1,4 @@
-#include "Linkers/funcs.h"
+#include "library/links/funcs.h"
 
 #pragma region Starting values.
 bool leftMouseHeld = false;
@@ -12,15 +12,20 @@ bool successfulLaunch = true;
 bool running = true;
 bool player = STARTSIDE;
 bool checkedMate = true;
+bool checkStatus = false;
+bool validationComplete = false;
+
+/*Game ending */
 bool gameOver = false;
+bool movesOver = false;
 bool mate = false;
 bool stale = false;
-bool checkStatus = false;
-Tile (*BOT_MAIN)(Move *, Piece *, int *) = &bot4;
+
+Tile (*BOT_MAIN)(Move *, Piece *, int *) = &bot2;
 static Tile destTile, originalTile, *validDest;
 static int destOptions, *validCounters;
 static char pawnoGo = PROMODEFAULT;
-static bool selfplayer = SELFPLAY;
+static bool botSim = SELFPLAY;
 static bool accelBots = false;
 static Uint64 savedTime = 0;
 static int totalMoves = 0;
@@ -30,7 +35,7 @@ Move *allMoves = NULL;
 PieceNode **playerPieces = NULL;
 PieceNode **opponentPieces = NULL;
 Piece playerPiece = NULL_PIECE;
-Piece opponentPiece = NULL_PIECE;
+Piece *premoveBuffer = NULL; /*Implement this, big boy*/
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 TileNode *headLightTile = NULL;
@@ -65,7 +70,6 @@ void launch()
         accident();
         return;
     }
-
     if (!createTable())
     {
         closeDataBase();
@@ -147,8 +151,7 @@ void setup(void)
     playGameStartAudio();
 }
 
-void process_input(void)
-{
+void process_input(void){
     leftMouseRelease = false;
     leftMouseclick = false;
     middleClick = false;
@@ -189,6 +192,8 @@ void process_input(void)
             F10clicked = true;
         if (event.key.scancode == SDL_SCANCODE_F4)
             F4clicked = true;
+        if (event.key.scancode == SDL_SCANCODE_ESCAPE)
+            running = false;
         break;
     default:
         break;
@@ -202,9 +207,11 @@ bool newGame(void)
     player = STARTSIDE;
     mate = false;
     stale = false;
+    movesOver = false;
     checkedMate = true;
     result = INVALID;
     gameOver = false;
+    validationComplete = false;
     resetStorage();
     unselectAll(headDarkTile, headLightTile);
     resetPieces(whiteHeadPiece, true);
@@ -228,15 +235,14 @@ bool update(void)
         SDL_Delay(WAIT_TIME);
     }
 
-    if (F10clicked)
+    if (botSim)
     {
-        accelBots = !accelBots;
-    }
+        if (F10clicked)
+            accelBots = !accelBots;
 
-    if ((mate || stale || gameOver) && selfplayer)
-    {
-        if (!newGame())
-            return false;
+        if (gameOver && botSim)
+            if (!newGame())
+                return false;
     }
 
     if (F4clicked)
@@ -246,7 +252,7 @@ bool update(void)
 
     if (middleClick)
     {
-        selfplayer = !selfplayer;
+        botSim = !botSim;
     }
 
     if (rightMouseclick)
@@ -259,23 +265,25 @@ bool update(void)
 
     if (leftMouseclick)
     {
-        /*Select a piece.*/
-        unselectAll(headDarkTile, headLightTile);
         Tile mouseTile = TileFromPos(mousepos);
-        if (player == HUMAN)
-            playerPiece = pieceFromTile(mouseTile, *playerPieces, NULL);
-        opponentPiece = pieceFromTile(mouseTile, *opponentPieces, NULL);
-        /*Highlight destination options.*/
-        if (playerPiece.ptr && !(mate || stale))
+        /*Select a piece.*/
+        Piece foundPiece = pieceFromTile(mouseTile, *playerPieces, NULL);
+        if (foundPiece.ptr)
+        {
+            unselectAll(headDarkTile, headLightTile);
+            playerPiece = foundPiece.ptr ? foundPiece : playerPiece;
+        }
+        if (playerPiece.ptr)
         {
             validDest = tileFromPool(playerPiece, allMoves, &destOptions, &validCounters);
-            if (validDest)
-                for (int a = 0; a < destOptions; a++)
-                {
-                    TileNode *foundNode = nodeFromTile(validDest[a], headDarkTile, headLightTile);
-                    if (foundNode)
-                        foundNode->selected = true;
-                }
+            highlightValidTiles(destOptions, validDest, headDarkTile, headLightTile);
+            if (!foundPiece.ptr)
+            {
+                destTile = mouseTile;
+                originalTile = playerPiece.ptr->pos[playerPiece.index];
+                result = approveSelection(destOptions, destTile, validDest, validCounters);
+                validationComplete = true;
+            }
         }
     }
 
@@ -283,46 +291,36 @@ bool update(void)
     {
         if (playerPiece.ptr)
             trackMouse(playerPiece, mousepos);
-        if (opponentPiece.ptr)
-            trackMouse(opponentPiece, mousepos);
     }
 
     if (leftMouseRelease)
     {
-        if (!playerPiece.ptr ||
-            mate || stale || selfplayer)
+        if (!playerPiece.ptr || gameOver || botSim || validationComplete)
         {
             if (mate)
                 SDL_Log("MATE");
             if (stale)
                 SDL_Log("Stale");
+            untrackMouse(playerPiece);
         }
         // Evaluation
         else
         {
-            destTile = TileFromPos(mousepos);
             originalTile = playerPiece.ptr->pos[playerPiece.index];
-            if (destOptions)
-                for (int k = 0; k < destOptions; k++)
-                {
-                    if (destTile.x == validDest[k].x &&
-                        destTile.y == validDest[k].y)
-                    {
-                        result = validCounters[k];
-                        break;
-                    }
-                }
-        }
-        if (result == INVALID)
-        {
-            if (playerPiece.ptr)
+            destTile = TileFromPos(mousepos);
+            bool justSelection = destTile.x == originalTile.x && destTile.y == originalTile.y;
+            if (!justSelection)
+            {
+                result = approveSelection(destOptions, destTile, validDest, validCounters);
+                validationComplete = true;
+            }
+            else
                 untrackMouse(playerPiece);
-            if (opponentPiece.ptr)
-                untrackMouse(opponentPiece);
         }
     }
 
-    if (selfplayer || player == BOT)
+    /*Bot selects move*/
+    if ((botSim || player == BOT) && !LOCAL_GAME)
     {
         if (mate || stale)
             return true;
@@ -334,15 +332,24 @@ bool update(void)
         savedTime = 0;
         destTile = (*BOT_MAIN)(allMoves, &playerPiece, &result);
         originalTile = playerPiece.ptr->pos[playerPiece.index];
+        validationComplete = true;
     }
 
-    if (result)
+    /*Make move*/
+    if (validationComplete)
     {
+        validationComplete = false;
+        if (!result)
+        {
+            untrackMouse(playerPiece);
+            unselectAll(headDarkTile, headLightTile);
+            playerPiece = NULL_PIECE;
+            return true;
+        }
         initMove(playerPiece, originalTile, destTile, player,
                  *playerPieces, *opponentPieces, pawnoGo);
         fullLogicUpdate(result, &checkStatus);
-        if (!accelBots)
-            playRightSound(checkStatus, result);
+        playRightSound(checkStatus, result);
         performMove(result, playerPiece, destTile, pawnoGo, playerPieces, opponentPieces, player);
         checkedMate = false;
         result = INVALID;
@@ -352,9 +359,8 @@ bool update(void)
     if (!checkedMate)
     {
         if (LIMIT_MOVES_PER_GAME)
-        {
-            gameOver = totalMoves > MAX_MOVES_PER_GAME;
-        }
+            movesOver = totalMoves > MAX_MOVES_PER_GAME;
+
         unselectAll(headDarkTile, headLightTile);
         bool enemyBool = !player;
         freeMoves(allMoves);
@@ -369,9 +375,9 @@ bool update(void)
         }
         recordMovesyntax(playerPiece, originalTile, destTile, *playerPieces,
                          *opponentPieces, result, checkStatus, mate, enemyBool,
-                         pawnoGo, stale, gameOver);
-
-        if (mate || stale || gameOver)
+                         pawnoGo, stale, movesOver);
+        gameOver = mate || stale || movesOver;
+        if (gameOver)
         {
             totalMoves = 0;
             playGameEndAudio();
@@ -379,17 +385,20 @@ bool update(void)
                 SDL_Log("%d WON!", player);
             if (stale)
                 SDL_Log("%d caused stalemate....", player);
-            if (gameOver)
+            if (movesOver)
             {
                 SDL_Log("Game was terminated.");
             }
-            if (selfplayer)
+            if (AUTOSTART_NEWGAME)
             {
                 if (!newGame())
                 {
+                    checkedMate = true;
                     return false;
                 }
             }
+            checkedMate = true;
+            return true;
         }
         player = !player;
         playerPieces = player ? &whiteHeadPiece : &blackHeadPiece;
@@ -415,16 +424,6 @@ bool render(void)
     {
         SDL_Log("Render Fail : 1");
         return false;
-    }
-
-    if (accelBots)
-    {
-        if (!SDL_RenderPresent(renderer))
-        {
-            SDL_Log("Render Fail : 6");
-            return false;
-        }
-        return true;
     }
 
     // Light Tiles

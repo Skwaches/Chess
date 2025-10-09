@@ -1,4 +1,4 @@
-#include "Linkers/funcs.h"
+#include "../links/funcs.h"
 /**Creates a linked-list of TileNodes.
  * The given bool dictates if the first tile should be offset.
  * True makes an offset.

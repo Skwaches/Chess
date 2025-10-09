@@ -1,12 +1,17 @@
 {
+    "code-runner.fileDirectoryAsCwd": false,
+    "code-runner.cwd": "${workspaceFolder}",
+    "code-runner.runInTerminal": true,
     "code-runner.executorMap": {
-        "c": "cd $dir && make && make run"
+        "c": "cd build && cmake .. && make && ./chess"
     },
+    "code-runner.customCommand": "clear && cmake .. && make && ./chess",
     "files.associations": {
         "rules.h": "c",
         "random": "c",
         "funcs.h": "c",
         "stdlib.h": "c",
-        "setboard.h": "c"
-    },
+        "setboard.h": "c",
+        "movessdk.h": "c"
+    }
 }

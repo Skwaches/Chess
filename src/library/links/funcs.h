@@ -5,10 +5,9 @@
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_mixer/SDL_mixer.h>
 #include <sqlite3.h>
-#include <stdlib.h> /*Bot inclusion*/
-
+#include <stdlib.h> 
 #include "classes.h"
-#include "constants.h"
+#include "defaults.h"
 #include "movesSDK.h"
 #include "sounds.h"
 #include "rules.h"

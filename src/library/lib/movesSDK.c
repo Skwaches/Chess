@@ -1,61 +1,60 @@
-#include "Linkers/funcs.h"
-
-static sqlite3 *DATABASE = NULL;
-static unsigned int GAMENUMBER = 0;
+#include "../links/funcs.h"
+static sqlite3 *database = NULL;
+static unsigned int gameNumber = 0;
 static char *errorMessage = NULL;
 static sqlite3_stmt *statement;
 
 // DataBase is opened and closed from the Main file:
 bool openDataBase(void)
 {
-    if (sqlite3_open(DATABASE_FILE_NAME, &DATABASE) != SQLITE_OK)
+    if (sqlite3_open(DATABASE_PATH, &database) != SQLITE_OK)
     {
-        sqlite3_close(DATABASE);
-        SDL_Log("DataBase could not be opened :%s", sqlite3_errmsg(DATABASE));
+        sqlite3_close(database);
+        SDL_Log("DataBase could not be opened :%s", sqlite3_errmsg(database));
         return false;
     }
 
-    // Set GAMENUMBER to next table;
+    // Set gameNumber to next table;
     char *command = "SELECT COUNT(*) FROM sqlite_master WHERE type='table';";
 
-    sqlite3_prepare_v2(DATABASE, command, -1, &statement, 0);
+    sqlite3_prepare_v2(database, command, -1, &statement, 0);
     if (sqlite3_step(statement) == SQLITE_ROW)
-        GAMENUMBER = sqlite3_column_int(statement, 0);
+        gameNumber = sqlite3_column_int(statement, 0);
     sqlite3_finalize(statement);
     return true;
 }
 
 void closeDataBase(void)
 {
-    sqlite3_close(DATABASE);
-    DATABASE = NULL;
+    sqlite3_close(database);
+    database = NULL;
 }
 
 int createTable(void)
 {
-    GAMENUMBER++;
+    gameNumber++;
     char command[56 + 1 + 10];
-    // size of command=56 + NULL terminator and 10 digits from GAMENUMBER;
-    // max of 10^10-1 for GAMENUMBER which is pretty damn big;
-    SDL_snprintf(command, sizeof(command), "CREATE TABLE IF NOT EXISTS [%d](Moves);", GAMENUMBER);
-    if (sqlite3_exec(DATABASE, command, 0, 0, &errorMessage) != SQLITE_OK)
+    // size of command=56 + NULL terminator and 10 digits from gameNumber;
+    // max of 10^10-1 for gameNumber which is pretty damn big;
+    SDL_snprintf(command, sizeof(command), "CREATE TABLE IF NOT EXISTS [%d](Moves);", gameNumber);
+    if (sqlite3_exec(database, command, 0, 0, &errorMessage) != SQLITE_OK)
     {
         SDL_Log("SQL ERROR : %s", errorMessage);
         sqlite3_free(errorMessage);
         errorMessage = NULL; // Avoid dangling pointer
         return 0;
     }
-    return GAMENUMBER;
+    return gameNumber;
 }
 
 bool recordMove(const char *move)
 {
     char command[MAX_COMMAND_LENGTH];
-    SDL_snprintf(command, sizeof(command), "INSERT INTO [%d](Moves) VALUES(?)", GAMENUMBER);
+    SDL_snprintf(command, sizeof(command), "INSERT INTO [%d](Moves) VALUES(?)", gameNumber);
     // Prepare statement
-    if (sqlite3_prepare_v2(DATABASE, command, -1, &statement, 0) != SQLITE_OK)
+    if (sqlite3_prepare_v2(database, command, -1, &statement, 0) != SQLITE_OK)
     {
-        SDL_Log("SQL ERROR :%s", sqlite3_errmsg(DATABASE));
+        SDL_Log("SQL ERROR :%s", sqlite3_errmsg(database));
         return false;
     }
 
@@ -64,7 +63,7 @@ bool recordMove(const char *move)
     // Execute
     if (sqlite3_step(statement) != SQLITE_DONE)
     {
-        SDL_Log("SQL ERROR :%s", sqlite3_errmsg(DATABASE));
+        SDL_Log("SQL ERROR :%s", sqlite3_errmsg(database));
         sqlite3_finalize(statement);
         return false;
     }

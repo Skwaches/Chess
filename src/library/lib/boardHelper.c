@@ -1,5 +1,4 @@
-// #include "Linkers/boardHelper.h"
-#include "Linkers/funcs.h"
+#include "../links/funcs.h"
 Tile TileFromPos(SDL_FPoint pos)
 {
     Tile mousetile = (Tile){pos.x / TILE_WIDTH + 1, Y_TILES - pos.y / TILE_HEIGHT + 1};
@@ -18,26 +17,33 @@ SDL_FRect centerRectAroundPos(SDL_FPoint pos)
 {
     return (SDL_FRect){pos.x - TILE_WIDTH / 2,
                        pos.y - TILE_HEIGHT / 2,
-                       TILE_WIDTH, TILE_WIDTH};
+                       TILE_WIDTH + PIECE_ZOOM, TILE_WIDTH + PIECE_ZOOM};
 }
 
-//  Since a Piece is drawn on its rect value.
-//  The rect is set to a rect built around the mouse position.
-//  Piece position is not altered.
-// This is because it is used to reset the rect if a move is not made.
+/**
+ * Since a Piece is drawn on its rect value.
+ * The rect is set to a rect built around the mouse position.
+ * Piece position is not altered.
+ * This is because it is used to reset the rect if a move is not made.*/
 void trackMouse(Piece fakePIECE, SDL_FPoint mouse_pos)
 {
     fakePIECE.ptr->rect[fakePIECE.index] = centerRectAroundPos(mouse_pos);
 }
 
-// Rebuilds the rect of the piece from the position.
+/**Rebuilds the rect of the piece from the position.
+ * Passing in NULL_PIECE does nothing
+ */
 void untrackMouse(Piece fakePIECE)
 {
+    if (!fakePIECE.ptr)
+        return;
     fakePIECE.ptr->rect[fakePIECE.index] = rectFromTile(fakePIECE.ptr->pos[fakePIECE.index]);
 }
 
-// Changes Piece pos to destination.
-// Rebuilds Piece rect from Position.
+/**
+ * Changes Piece pos to destination.
+ * Rebuilds Piece rect from Position.
+ */
 void movePiece(Piece fakePIECE, Tile destCoordinates)
 {
     fakePIECE.ptr->pos[fakePIECE.index] = destCoordinates;
@@ -166,4 +172,28 @@ int getFPS(Uint64 time)
         startTime = SDL_GetTicks();
 
     return 0;
+}
+
+int approveSelection(int destOptions, Tile destTile, Tile *validDest, int *validCounters)
+{
+    if (destOptions)
+        for (int k = 0; k < destOptions; k++)
+        {
+            if (destTile.x == validDest[k].x &&
+                destTile.y == validDest[k].y)
+            {
+                return validCounters[k];
+            }
+        }
+    return 0;
+}
+void highlightValidTiles(int destOptions, Tile *validDest, TileNode *headDarkTile, TileNode *headLightTile)
+{
+    if (validDest)
+        for (int a = 0; a < destOptions; a++)
+        {
+            TileNode *foundNode = nodeFromTile(validDest[a], headDarkTile, headLightTile);
+            if (foundNode)
+                foundNode->selected = true;
+        }
 }

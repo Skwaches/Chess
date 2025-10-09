@@ -14,4 +14,7 @@ void promotePiece(Piece fakePiece, char chosenOne, PieceNode *Family, Tile destT
 void performMove(int result, Piece playerPiece, Tile destTile, char pawnoGo,
                  PieceNode **playerPieces, PieceNode **opponentPieces, bool player);
 int getFPS(Uint64 time);
+int approveSelection(int destOptions, Tile destTile,
+                     Tile *validDest, int *validCounters);
+void highlightValidTiles(int destOptions, Tile *validDest, TileNode *headDarkTile, TileNode *headLightTile);
 #endif
