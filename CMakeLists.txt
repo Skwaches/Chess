@@ -4,7 +4,6 @@ project(chess)
 find_package(SDL3)
 find_package(SDL3_mixer)
 find_package(SDL3_image) 
-
 set(srcName src)
 set(libraryName library)
 set(libName lib)

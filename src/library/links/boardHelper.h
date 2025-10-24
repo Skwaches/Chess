@@ -13,8 +13,10 @@ TileNode *nodeFromTile(Tile coords, TileNode *light, TileNode *dark);
 void promotePiece(Piece fakePiece, char chosenOne, PieceNode *Family, Tile destTile);
 void performMove(int result, Piece playerPiece, Tile destTile, char pawnoGo,
                  PieceNode **playerPieces, PieceNode **opponentPieces, bool player);
-int getFPS(Uint64 time);
 int approveSelection(int destOptions, Tile destTile,
                      Tile *validDest, int *validCounters);
 void highlightValidTiles(int destOptions, Tile *validDest, TileNode *headDarkTile, TileNode *headLightTile);
+void redrawFamily(PieceNode *family);
+void flipBoard(PieceNode** bottom,PieceNode** top);
+void renderPossibleMoves(SDL_Renderer* renderer,Tile* possDest,int length);
 #endif

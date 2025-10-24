@@ -10,7 +10,7 @@ bool F10clicked = false;
 bool F4clicked = false;
 bool successfulLaunch = true;
 bool running = true;
-bool player = STARTSIDE;
+bool player;
 bool checkedMate = true;
 bool checkStatus = false;
 bool validationComplete = false;
@@ -21,11 +21,11 @@ bool movesOver = false;
 bool mate = false;
 bool stale = false;
 
-Tile (*BOT_MAIN)(Move *, Piece *, int *) = &bot2;
+Tile (*BOT_MAIN)(Move *, Piece *, int *) = &bot4;
 static Tile destTile, originalTile, *validDest;
-static int destOptions, *validCounters;
+static int destOptions = 0;
+static int *validCounters;
 static char pawnoGo = PROMODEFAULT;
-static bool botSim = SELFPLAY;
 static bool accelBots = false;
 static Uint64 savedTime = 0;
 static int totalMoves = 0;
@@ -40,8 +40,14 @@ SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 TileNode *headLightTile = NULL;
 TileNode *headDarkTile = NULL;
-PieceNode *blackHeadPiece = NULL;
-PieceNode *whiteHeadPiece = NULL;
+
+/*Variables for highlighting previous moves*/
+TileNode *prevHoverTile = NULL;
+TileNode *fromTileNode = NULL;
+TileNode *toTileNode = NULL;
+
+PieceNode *topHeadPiece = NULL;
+PieceNode *bottomHeadPiece = NULL;
 SDL_FPoint mousepos = {0, 0};
 #pragma endregion
 
@@ -56,11 +62,13 @@ void launch()
 {
     if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
     {
+		SDL_Log("Video sub-system couldn't be initialised.");
         accident();
         return;
     }
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO))
     {
+		SDL_Log("Audio sub-system couldn't be initialised.");
         accident();
         return;
     }
@@ -78,12 +86,15 @@ void launch()
     }
     if (!Init_Audio())
     {
+		closeDataBase();
         accident();
+		return;
     }
 
     window = SDL_CreateWindow("CHESS", SCREENWIDTH, SCREENHEIGHT, SDL_WINDOW_RESIZABLE);
     if (window == NULL)
     {
+		SDL_Log("Window couldn't be created.");
         closeDataBase();
         accident();
         return;
@@ -91,6 +102,7 @@ void launch()
     renderer = SDL_CreateRenderer(window, NULL);
     if (renderer == NULL)
     {
+		SDL_Log("Renderer could not be created.");
         closeDataBase();
         SDL_DestroyWindow(window);
         accident();
@@ -134,20 +146,22 @@ void setup(void)
         accident();
         SDL_Log("Problem with Tiles");
     }
-    // Pieces
-    whiteHeadPiece = setPieces(renderer, player, WHITE_PIECES_PATH);
-    blackHeadPiece = setPieces(renderer, !player, BLACK_PIECES_PATH);
-    if (blackHeadPiece == NULL || whiteHeadPiece == NULL)
+	const char* bottomPath = HUMAN? WHITE_PIECES_PATH: BLACK_PIECES_PATH;
+	const char* topPath    = !HUMAN? WHITE_PIECES_PATH: BLACK_PIECES_PATH;
+	bottomHeadPiece = setPieces(renderer,true,bottomPath);
+   	topHeadPiece = setPieces(renderer,false,topPath);
+    if (topHeadPiece == NULL || bottomHeadPiece == NULL)
     {
         clean_pieces();
         accident();
         SDL_Log("Problem with pieces");
         return;
     }
-    /*For side selection*/
-    playerPieces = player ? &whiteHeadPiece : &blackHeadPiece;
-    opponentPieces = !player ? &whiteHeadPiece : &blackHeadPiece;
-    allMoves = selectionPool(*playerPieces, *opponentPieces, player);
+    player = STARTSIDE;
+	/*For side selection*/
+   	playerPieces   = player ?  &bottomHeadPiece : &topHeadPiece;
+	opponentPieces = !player ? &bottomHeadPiece : &topHeadPiece;
+	allMoves = selectionPool(*playerPieces, *opponentPieces, player);
     playGameStartAudio();
 }
 
@@ -159,49 +173,56 @@ void process_input(void){
     F10clicked = false;
     F4clicked = false;
     SDL_Event event;
-    SDL_PollEvent(&event);
-    switch (event.type)
-    {
-    case SDL_EVENT_QUIT:
-        running = false;
-        break;
-    case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        if (event.button.button == 1)
-        {
-            leftMouseclick = true;
-            leftMouseHeld = true;
-        }
-        if (event.button.button == 2)
-        {
-            middleClick = true;
-        }
-        else if (event.button.button == 3)
-        {
-            rightMouseclick = true;
-        }
-        break;
-    case SDL_EVENT_MOUSE_BUTTON_UP:
-        if (event.button.button == 1)
-        {
-            leftMouseHeld = false;
-            leftMouseRelease = true;
-        }
-        break;
-    case SDL_EVENT_KEY_DOWN:
-        if (event.key.scancode == SDL_SCANCODE_F10)
-            F10clicked = true;
-        if (event.key.scancode == SDL_SCANCODE_F4)
-            F4clicked = true;
-        if (event.key.scancode == SDL_SCANCODE_ESCAPE)
-            running = false;
-        break;
-    default:
-        break;
-    }
+    while(SDL_PollEvent(&event)){
+    switch (event.type){
+	 	case SDL_EVENT_QUIT:
+        	running = false;
+       		break;
+
+		case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    		switch(event.button.button){
+       			case 1: 
+					leftMouseclick = true;
+            		leftMouseHeld = true;
+					break;
+				case 2:
+            		middleClick = true;
+					break;
+				case 3:
+            		rightMouseclick = true;
+					break;
+        		default: break;}
+       		 break;
+    
+		case SDL_EVENT_MOUSE_BUTTON_UP:
+    	    switch(event.button.button){
+				case 1:
+            		leftMouseHeld = false;
+            		leftMouseRelease = true;
+        			break;
+				default:break;}
+       		 break;
+
+   		 case SDL_EVENT_KEY_DOWN:
+        	switch(event.key.scancode){
+				case SDL_SCANCODE_F10:
+            		F10clicked = true;
+					break;
+				case SDL_SCANCODE_F4:
+            		F4clicked = true;
+					break;
+        		case SDL_SCANCODE_ESCAPE:
+            		running = false;
+					break;
+				default:break;}
+        	break;
+    	default:break;
+ 	   }
+
+	}
 }
 
-bool newGame(void)
-{
+bool newGame(void){
     totalMoves = 0;
     playGameStartAudio();
     player = STARTSIDE;
@@ -213,72 +234,60 @@ bool newGame(void)
     gameOver = false;
     validationComplete = false;
     resetStorage();
-    unselectAll(headDarkTile, headLightTile);
-    resetPieces(whiteHeadPiece, true);
-    resetPieces(blackHeadPiece, false);
-    playerPieces = player ? &whiteHeadPiece : &blackHeadPiece;
-    opponentPieces = !player ? &whiteHeadPiece : &blackHeadPiece;
+    unselectAll(headDarkTile, headLightTile,true);
+    resetPieces(bottomHeadPiece, true);
+    resetPieces(topHeadPiece, false);
+    playerPieces = player ? &bottomHeadPiece : &topHeadPiece;
+    opponentPieces = !player ? &bottomHeadPiece : &topHeadPiece;
     freeMoves(allMoves);
     allMoves = selectionPool(*playerPieces, *opponentPieces, player);
     int currentTable = createTable();
-    if (!currentTable || (currentTable >= MAX_GAMES))
-        return false;
-    return true;
+	return true;
 }
-
-bool update(void)
+/**
+ * I want to stop renderering when there is no need.
+ * Will make update return special values for rendering. Add this to defaults.h or something.*/
+void update(void)
 {
     SDL_GetMouseState(&mousepos.x, &mousepos.y);
 
     if (LIMIT_FPS)
-    {
         SDL_Delay(WAIT_TIME);
-    }
-
-    if (botSim)
-    {
-        if (F10clicked)
-            accelBots = !accelBots;
-
-        if (gameOver && botSim)
-            if (!newGame())
-                return false;
-    }
 
     if (F4clicked)
-    {
         newGame();
-    }
-
-    if (middleClick)
-    {
-        botSim = !botSim;
-    }
-
-    if (rightMouseclick)
+    
+	if (rightMouseclick)
     {
         Tile mouseTile = TileFromPos(mousepos);
         TileNode *selectedTile = nodeFromTile(mouseTile, headLightTile, headDarkTile);
         if (selectedTile)
-            selectedTile->selected = !(selectedTile->selected);
+            selectedTile->selected = selectedTile->selected==SELECTED_TILE ? NORMAL_TILE: SELECTED_TILE;
     }
 
     if (leftMouseclick)
     {
         Tile mouseTile = TileFromPos(mousepos);
-        /*Select a piece.*/
-        Piece foundPiece = pieceFromTile(mouseTile, *playerPieces, NULL);
-        if (foundPiece.ptr)
+        
+		/*Select a piece.*/
+		Piece foundPiece = pieceFromTile(mouseTile, *playerPieces, NULL);
+		Piece opponentPiece = pieceFromTile(mouseTile, *opponentPieces, NULL);	
+		if (foundPiece.ptr)
         {
-            unselectAll(headDarkTile, headLightTile);
-            playerPiece = foundPiece.ptr ? foundPiece : playerPiece;
-        }
+            unselectAll(headDarkTile, headLightTile,false);
+			playerPiece = foundPiece;
+        	
+		}
+		if(opponentPiece.ptr){
+			
+		}
+		/*Attempt move if piece is already selected*/
         if (playerPiece.ptr)
         {
             validDest = tileFromPool(playerPiece, allMoves, &destOptions, &validCounters);
-            highlightValidTiles(destOptions, validDest, headDarkTile, headLightTile);
-            if (!foundPiece.ptr)
-            {
+            if(false)
+				highlightValidTiles(destOptions, validDest, headDarkTile, headLightTile);
+            if (!foundPiece.ptr){
                 destTile = mouseTile;
                 originalTile = playerPiece.ptr->pos[playerPiece.index];
                 result = approveSelection(destOptions, destTile, validDest, validCounters);
@@ -289,13 +298,23 @@ bool update(void)
 
     if (leftMouseHeld)
     {
-        if (playerPiece.ptr)
-            trackMouse(playerPiece, mousepos);
-    }
+        if (playerPiece.ptr){
+			trackMouse(playerPiece, mousepos);
+			if(!gameOver){
+			Tile mouseTile = TileFromPos(mousepos);	
+		    if(prevHoverTile && prevHoverTile != fromTileNode && prevHoverTile != toTileNode)
+				prevHoverTile->selected = NORMAL_TILE;
+			TileNode* currentTile = nodeFromTile(mouseTile, headLightTile, headDarkTile);
+		    if(currentTile && currentTile != fromTileNode && currentTile != toTileNode)
+				currentTile->selected = PIECE_HOVER;
+				prevHoverTile =	currentTile;			
+			}}
+	}
+    
 
     if (leftMouseRelease)
     {
-        if (!playerPiece.ptr || gameOver || botSim || validationComplete)
+        if (!playerPiece.ptr || gameOver || validationComplete)
         {
             if (mate)
                 SDL_Log("MATE");
@@ -320,20 +339,21 @@ bool update(void)
     }
 
     /*Bot selects move*/
-    if ((botSim || player == BOT) && !LOCAL_GAME)
+    if (player == BOT)
     {
         if (mate || stale)
-            return true;
+            return ;
         if (!savedTime)
             savedTime = SDL_GetTicks();
-        Uint64 botmoveDelay = !accelBots ? BOT_DELAY : (BOT_DELAY / ((BOT_ACCEL > 0) ? BOT_ACCEL : 1));
-        if (SDL_GetTicks() - savedTime < botmoveDelay)
-            return true;
-        savedTime = 0;
+
+        if (SDL_GetTicks() - savedTime < BOT_DELAY)
+            return ;
+        
+		savedTime = 0;
         destTile = (*BOT_MAIN)(allMoves, &playerPiece, &result);
         originalTile = playerPiece.ptr->pos[playerPiece.index];
         validationComplete = true;
-    }
+     		}
 
     /*Make move*/
     if (validationComplete)
@@ -342,16 +362,31 @@ bool update(void)
         if (!result)
         {
             untrackMouse(playerPiece);
-            unselectAll(headDarkTile, headLightTile);
+            unselectAll(headDarkTile, headLightTile,false);
             playerPiece = NULL_PIECE;
-            return true;
+            return ;
         }
         initMove(playerPiece, originalTile, destTile, player,
                  *playerPieces, *opponentPieces, pawnoGo);
         fullLogicUpdate(result, &checkStatus);
         playRightSound(checkStatus, result);
         performMove(result, playerPiece, destTile, pawnoGo, playerPieces, opponentPieces, player);
-        checkedMate = false;
+        
+		/*Remove previous highlight*/
+		if(fromTileNode)
+			fromTileNode->selected = NORMAL_TILE;
+		if(toTileNode)
+			toTileNode->selected = NORMAL_TILE;
+	
+		/*Highlight move made*/
+		fromTileNode = nodeFromTile(originalTile, headLightTile, headDarkTile); 
+	 	toTileNode = nodeFromTile(destTile, headLightTile, headDarkTile);
+		if(fromTileNode)
+			fromTileNode->selected = PREV_ORIG;
+		if(toTileNode)
+			toTileNode->selected = PREV_DEST;
+
+		checkedMate = false;
         result = INVALID;
     }
 
@@ -361,7 +396,7 @@ bool update(void)
         if (LIMIT_MOVES_PER_GAME)
             movesOver = totalMoves > MAX_MOVES_PER_GAME;
 
-        unselectAll(headDarkTile, headLightTile);
+        unselectAll(headDarkTile, headLightTile,false);
         bool enemyBool = !player;
         freeMoves(allMoves);
         allMoves = selectionPool(*opponentPieces, *playerPieces, enemyBool);
@@ -386,29 +421,19 @@ bool update(void)
             if (stale)
                 SDL_Log("%d caused stalemate....", player);
             if (movesOver)
-            {
                 SDL_Log("Game was terminated.");
-            }
             if (AUTOSTART_NEWGAME)
-            {
-                if (!newGame())
-                {
-                    checkedMate = true;
-                    return false;
-                }
-            }
+                newGame();
             checkedMate = true;
-            return true;
+            return ;
         }
         player = !player;
-        playerPieces = player ? &whiteHeadPiece : &blackHeadPiece;
-        opponentPieces = !player ? &whiteHeadPiece : &blackHeadPiece;
+        playerPieces = player ? &bottomHeadPiece : &topHeadPiece;
+        opponentPieces = !player ? &bottomHeadPiece : &topHeadPiece;
         playerPiece = NULL_PIECE;
         checkedMate = true;
         totalMoves++;
     }
-
-    return true;
 }
 
 bool render(void)
@@ -416,48 +441,47 @@ bool render(void)
     // Background
     if (!setRenderColor(renderer, BACKGROUND_COLOR))
     {
-        SDL_Log("Render Fail : 0");
+        SDL_Log("Background Render Colour fail");
         return false;
     }
 
-    if (!SDL_RenderClear(renderer))
-    {
-        SDL_Log("Render Fail : 1");
+    if (!SDL_RenderClear(renderer)){
+        SDL_Log("Background Render Fail.");
         return false;
     }
 
     // Light Tiles
     if (!renderTileNodes(renderer, headLightTile, LIGHT_TILE_COLOR))
     {
-        SDL_Log("Render Fail : 2");
+        SDL_Log("LightTiles Render Fail.");
         return false;
     }
 
     // Dark Tiles
     if (!renderTileNodes(renderer, headDarkTile, DARK_TILE_COLOR))
     {
-        SDL_Log("Render Fail : 3");
+        SDL_Log("DartTiles Render Fail.");
         return false;
     }
 
-    // Black Pieces
-    if (!renderPieces(renderer, blackHeadPiece))
+    // Top Pieces
+    if (!renderPieces(renderer, topHeadPiece))
     {
-        SDL_Log("Render Fail : 4");
+        SDL_Log("Black-Pieces Render Fail.");
         return false;
     }
 
-    // White Pieces
-    if (!renderPieces(renderer, whiteHeadPiece))
+    // Bottom  Pieces
+    if (!renderPieces(renderer, bottomHeadPiece))
     {
-        SDL_Log("Render Fail : 5");
+        SDL_Log("White-Pieces Render Fail.");
         return false;
     }
-
+	
     // Present
     if (!SDL_RenderPresent(renderer))
     {
-        SDL_Log("Render Fail : 6");
+        SDL_Log("Render Present Fail.");
         return false;
     }
     return true;
@@ -468,7 +492,7 @@ void clean(void)
     freeMoves(allMoves);
     cleanAudio();
     closeDataBase();
-    freePieces(blackHeadPiece);
+    freePieces(topHeadPiece);
     freeTileNodes(headLightTile);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
@@ -486,9 +510,7 @@ int main()
     while (running)
     {
         process_input();
-
-        if (!update())
-            running = false;
+        update();
 
         if (!render())
             running = false;

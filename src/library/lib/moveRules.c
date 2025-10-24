@@ -1,4 +1,4 @@
-#include "../links/funcs.h"
+# include "../links/funcs.h"
 
 /**Local holders.
  * This is to let me use the same variables in different functions without any parameters.

@@ -15,8 +15,8 @@ SDL_FRect rectFromTile(Tile cords)
 // Center Rect around pos
 SDL_FRect centerRectAroundPos(SDL_FPoint pos)
 {
-    return (SDL_FRect){pos.x - TILE_WIDTH / 2,
-                       pos.y - TILE_HEIGHT / 2,
+    return (SDL_FRect){pos.x - (TILE_WIDTH + PIECE_ZOOM)/ 2,
+                       pos.y - (TILE_HEIGHT+ PIECE_ZOOM) / 2,
                        TILE_WIDTH + PIECE_ZOOM, TILE_WIDTH + PIECE_ZOOM};
 }
 
@@ -109,24 +109,24 @@ void performMove(int result, Piece playerPiece, Tile destTile, char pawnoGo,
 
     switch (result)
     {
-    case VALID: // Move no capture
+    case VALID: 
         break;
-    case VALID_CAPTURE: // Move + capture
+    case VALID_CAPTURE: 
         deletePiece(pieceFromTile(destTile, *opponentPieces, NULL));
         break;
-    case KINGSIDE_CASTLING: // Castle KingSide
+    case KINGSIDE_CASTLING:
         rooksTile = (Tile){ROOK_X[1], yValueOfPiece};
         rookDest = (Tile){6, yValueOfPiece};
         rookPiece = pieceFromTile(rooksTile, *playerPieces, &knownPiece);
         movePiece(rookPiece, rookDest);
         break;
-    case QUEENSIDE_CASTLING: // Castle QueenSide
+    case QUEENSIDE_CASTLING:
         rooksTile = (Tile){ROOK_X[0], yValueOfPiece};
         rookDest = (Tile){4, yValueOfPiece};
         rookPiece = pieceFromTile(rooksTile, *playerPieces, &knownPiece);
         movePiece(rookPiece, rookDest);
         break;
-    case ENPASSANT: // enpassant
+    case ENPASSANT: 
         Tile niceEn = (Tile){destTile.x, destTile.y + (player ? -1 : 1)};
         deletePiece(pieceFromTile(niceEn, *opponentPieces, NULL));
         break;
@@ -140,39 +140,7 @@ void performMove(int result, Piece playerPiece, Tile destTile, char pawnoGo,
         break;
     }
 }
-/**
- * \returns Average Fps after every {time} seconds
- * since game launch.
- *
- * \param time time to take average for in ms.
- * Defaults to 10000 if 0 is supplied.
- */
-int getFPS(Uint64 time)
-{
-    if (!time)
-        time = 10000;
-    int fps = 0;
-    static int frames = 0;
-    static Uint64 timePassed = 0;
-    static Uint64 startTime = 0;
-    if (startTime)
-    {
-        timePassed += SDL_GetTicks() - startTime;
-        startTime = SDL_GetTicks();
-        frames++;
-        if (timePassed >= time)
-        {
-            fps = frames / timePassed;
-            fps /= 1000;
-            frames = 0;
-            return fps;
-        }
-    }
-    else
-        startTime = SDL_GetTicks();
 
-    return 0;
-}
 
 int approveSelection(int destOptions, Tile destTile, Tile *validDest, int *validCounters)
 {
@@ -185,7 +153,7 @@ int approveSelection(int destOptions, Tile destTile, Tile *validDest, int *valid
                 return validCounters[k];
             }
         }
-    return 0;
+    return INVALID;
 }
 void highlightValidTiles(int destOptions, Tile *validDest, TileNode *headDarkTile, TileNode *headLightTile)
 {
@@ -194,6 +162,21 @@ void highlightValidTiles(int destOptions, Tile *validDest, TileNode *headDarkTil
         {
             TileNode *foundNode = nodeFromTile(validDest[a], headDarkTile, headLightTile);
             if (foundNode)
-                foundNode->selected = true;
+                foundNode->selected = SELECTED_TILE;
         }
 }
+void flipBoard(PieceNode** bottom,PieceNode** top){
+	for(PieceNode* bott = *bottom;bott; bott = bott->next)
+		for(int a = 0; a < bott->appearances; a++)
+			bott->pos[a] =(Tile) {X_TILES + 1 - bott->pos[a].x, Y_TILES + 1 -  bott->pos[a].y};
+		
+	for(PieceNode* topp = *top;topp; topp = topp->next)
+		for(int a = 0; a < topp->appearances; a++)
+			topp->pos[a] =(Tile) {X_TILES + 1 - topp->pos[a].x, Y_TILES + 1 -  topp->pos[a].y};
+		
+
+	redrawFamily(*bottom);
+	redrawFamily(*top);
+}
+
+

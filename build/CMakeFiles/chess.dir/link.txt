@@ -1,0 +1,1 @@
+/usr/bin/cc -Wl,--dependency-file=CMakeFiles/chess.dir/link.d CMakeFiles/chess.dir/src/main.c.o -o chess  -Wl,-rpath,/usr/local/lib:/home/skwaches/Projects/Chess/build/src /usr/local/lib/libSDL3_mixer.so.0.1.0 -lSDL3_image -lsqlite3 src/libCustom.so /usr/local/lib/libSDL3.so.0.3.0

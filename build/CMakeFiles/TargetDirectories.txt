@@ -1,0 +1,6 @@
+/home/skwaches/Projects/Chess/build/CMakeFiles/chess.dir
+/home/skwaches/Projects/Chess/build/CMakeFiles/edit_cache.dir
+/home/skwaches/Projects/Chess/build/CMakeFiles/rebuild_cache.dir
+/home/skwaches/Projects/Chess/build/src/CMakeFiles/Custom.dir
+/home/skwaches/Projects/Chess/build/src/CMakeFiles/edit_cache.dir
+/home/skwaches/Projects/Chess/build/src/CMakeFiles/rebuild_cache.dir

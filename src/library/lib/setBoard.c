@@ -21,14 +21,7 @@ TileNode *setTiles(bool startOffset)
     offset = startOffset;
     for (int y = start_Y; y <= maxTileY; y += TILE_HEIGHT)
     {
-        if (offset)
-        {
-            start_X = TILE_WIDTH;
-        }
-        else
-        {
-            start_X = 0;
-        }
+		start_X = offset ? TILE_WIDTH: 0;
         offset = !offset;
 
         for (int x = start_X; x <= maxTileX; x += 2 * TILE_WIDTH)
@@ -36,7 +29,7 @@ TileNode *setTiles(bool startOffset)
             SDL_FRect temp_rect = {x, y, TILE_WIDTH, TILE_HEIGHT};
             tempTile->rect = temp_rect;
             tempTile->pos = (Tile){(int)x / TILE_WIDTH + 1, Y_TILES - (int)y / TILE_HEIGHT};
-            tempTile->selected = false;
+            tempTile->selected = NORMAL_TILE;
             if (y + TILE_HEIGHT > maxTileY && x + 2 * TILE_WIDTH > maxTileX)
             {
                 tempTile->next = NULL;
@@ -59,30 +52,50 @@ bool setRenderColor(SDL_Renderer *renderer, SDL_Color color)
     return SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 }
 
-void unselectAll(TileNode *family, TileNode *opp)
+
+void unselectAll(TileNode *family, TileNode *opp,bool force)
 {
     for (TileNode *tempHead = family; tempHead; tempHead = tempHead->next)
-        tempHead->selected = false;
+      	if(force || (tempHead->selected != PREV_ORIG && tempHead->selected != PREV_DEST) )
+ 			tempHead->selected = NORMAL_TILE;
     for (TileNode *tempHead = opp; tempHead; tempHead = tempHead->next)
-        tempHead->selected = false;
+      	if(force || (tempHead->selected != PREV_ORIG && tempHead->selected != PREV_DEST) )
+        	tempHead->selected = NORMAL_TILE;
 }
 // renders TileNode objects connected to the given pointer
 // Returns true on success and false otherwise
 // Call SDL_GetError for info
 bool renderTileNodes(SDL_Renderer *renderer, TileNode *HeadTile, SDL_Color colors)
 {
-    TileNode *TempTile = HeadTile;
-    SDL_Color colorToUse;
-    while (TempTile != NULL)
-    {
-        colorToUse = TempTile->selected ? SELECTED_TILE_COLOR : colors;
-        if (!SDL_SetRenderDrawColor(renderer, colorToUse.r, colorToUse.b, colorToUse.g, colorToUse.a))
+    for(TileNode *TempTile = HeadTile; TempTile; TempTile=TempTile->next){
+        if ( !setRenderColor(renderer,colors) )
             return false;
-        if (!SDL_RenderFillRect(renderer, &TempTile->rect))
-        {
+        if ( !SDL_RenderFillRect(renderer, &TempTile->rect) )
             return false;
+		
+		SDL_Color chosen = {0,0,0,0};
+		switch(TempTile->selected){
+			case NORMAL_TILE:
+				break;
+			case SELECTED_TILE:
+				chosen = SELECTED_TILE_COLOR;
+				break;
+			case PIECE_HOVER:
+				chosen = DEST_COLOR;
+				break;
+			case PREV_ORIG:
+				chosen = ORIG_COLOR;
+				break;
+			case PREV_DEST:
+				chosen = DEST_COLOR;
+				break;
+			default: 
+				break;
         }
-        TempTile = TempTile->next;
+		if(chosen.a){
+			setRenderColor(renderer,chosen);
+			SDL_RenderFillRect(renderer, &TempTile->rect);
+		}
     }
     return true;
 }
@@ -164,8 +177,8 @@ PieceNode *makePieceNode(SDL_Renderer *renderer,
         tempPiece->rect[k] = rectFromTile(tempPiece->pos[k]);
     return tempPiece;
 }
-
-PieceNode *setPieces(SDL_Renderer *renderer, bool colour, const char *Path)
+/*colour determines position true is bottom.*/
+PieceNode *setPieces(SDL_Renderer *renderer, bool colour,  const char *Path)
 {
     char **pieces = NULL;
     char buffer[MAX_ASSET_PATH];

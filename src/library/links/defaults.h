@@ -3,8 +3,8 @@
 #define CONSTANTS_H
 #include "funcs.h"
 // SCREEN
-#define SCREENWIDTH 1000
-#define SCREENHEIGHT 1000
+#define SCREENWIDTH 600
+#define SCREENHEIGHT 600
 #define X_TILES 8
 #define Y_TILES 8
 
@@ -12,20 +12,15 @@
 #define TILE_WIDTH (SCREENWIDTH / X_TILES)
 #define TILE_HEIGHT (SCREENHEIGHT / Y_TILES)
 #define PIECE_ZOOM 20 /*This is the size of a selected piece.*/
-
-// PIECES RANK
-#define BLACK_Y Y_TILES
-#define BPAWNY (Y_TILES - 1)
-#define WHITE_Y 1
-#define WPAWNY (WHITE_Y + 1)
-
+ 
 // FPS_CAP
 #define FPS_CAP 1500.0
 #define WAIT_TIME ((1 / FPS_CAP) * 1000.0)
 #define LIMIT_FPS true
 
-// PATHS
-/*Note Assumption is that game is running from build.*/
+/* Relative PATHS
+ * Note : Assumption is that game is running from build.
+ * Adjust accordingly.*/
 #define ASSETS_PATH                   "../assets/"
 #define DATABASE_PATH ASSETS_PATH     "moves.db"
 #define VISUAL_PATH ASSETS_PATH       "visual/"
@@ -35,6 +30,8 @@
 #define BLACK_PIECES_PATH PIECES_PATH "black"
 #define SOUNDS_PATH AUDIO_PATH        "sound"
 #define MUSIC_PATH AUDIO_PATH         "music"
+
+
 #define MAX_NAME_LENGTH 10
 #define MAX_ASSET_PATH 100
 #define MAX_MOVE_SYNTAX 40
@@ -87,28 +84,36 @@
 #define PROMOTION_CAPTURE 7
 
 /*White is true. Black is false;*/
-#define STARTSIDE true
-#define HUMAN true
-#define BOT !HUMAN
-#define BOT_DELAY 1000 /*Time is in ms*/
-#define BOT_ACCEL 8    /*By what factor should the BOT_DELAY be reduced by. should not be less than 1*/
 #define PROMODEFAULT QUEEN_NAME
-#define SELFPLAY false
-#define LIMIT_GAMES false
-#define MAX_GAMES 100
-#define LIMIT_MOVES_PER_GAME false
-#define MAX_MOVES_PER_GAME 100
-#define NULL_PIECE (Piece){NULL, -1}
-#define AUTOSTART_NEWGAME false
-#define LOCAL_GAME true
+extern bool STARTSIDE; 
+extern bool HUMAN;
+extern bool BOT ;
+extern int  BOT_DELAY ;
+extern bool LIMIT_MOVES_PER_GAME; 
+extern int MAX_MOVES_PER_GAME ;
+extern bool AUTOSTART_NEWGAME;
+
 // DELETE PIECE
-extern const Tile SHADOW_REALM;
+#define SHADOW_REALM (Tile){-X_TILES,-Y_TILES}
+#define NULL_PIECE (Piece){NULL, -1}
 
 // Board Colors
-#define LIGHT_TILE_COLOR (SDL_Color){200, 160, 190, 255}
-#define DARK_TILE_COLOR (SDL_Color){130, 120, 150, 255}
-#define SELECTED_TILE_COLOR (SDL_Color){190, 90, 9, 255}
-#define BACKGROUND_COLOR (SDL_Color){10, 10, 10, 255}
+extern SDL_Color BACKGROUND_COLOR;
+extern SDL_Color LIGHT_TILE_COLOR;
+extern SDL_Color DARK_TILE_COLOR;
+extern SDL_Color SELECTED_TILE_COLOR;
+extern SDL_Color ORIG_COLOR;
+extern SDL_Color DEST_COLOR;
+extern SDL_Color POSS_DEST_COLOR;
+
+//TileNode Color Codes
+#define NORMAL_TILE 0
+#define SELECTED_TILE 1
+#define PIECE_HOVER 2
+#define PREV_ORIG 3
+#define PREV_DEST 4
+
+/*Showing possible moves*/
 
 //  XPOSITIONS
 extern int PAWN_X[];
@@ -117,6 +122,13 @@ extern int QUEEN_X[];
 extern int KING_X[];
 extern int ROOK_X[];
 extern int KNIGHT_X[];
+
+// YPOSITIONS
+#define BLACK_Y Y_TILES
+#define BPAWNY (Y_TILES - 1)
+#define WHITE_Y 1
+#define WPAWNY (WHITE_Y + 1)
+
 
 // NO OF PIECES
 extern const int KING_NO;
