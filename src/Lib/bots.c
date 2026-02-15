@@ -1,4 +1,4 @@
-#include "../links/funcs.h"
+#include "../Include/funcs.h"
 
 /* Arrange the N elements of ARRAY in random order.
    Only effective if N is much smaller than RAND_MAX;
@@ -162,3 +162,43 @@ Tile bot4(Move *pool, Piece *pieceholder, int *valid)
     }
     return SHADOW_REALM;
 }
+
+/*This bot will sort moves according to their Values of valid.*/
+Tile bot5(Move *pool, Piece *pieceholder, int *valid){
+	int validBuffer = 0;
+	Tile destBuffer = SHADOW_REALM;
+	Piece buffer = NULL_PIECE;
+	bool checkFound = false;
+	for(int p = 0; p < PIECETYPES; p++)
+		for(int v = 0; v < pool[p].pieces->appearances; v++)
+			for(int i = 0; i < pool[p].no[v]; i++){
+				Piece currPiece = {pool[p].pieces,v};
+				Tile currDest = pool[p].dreams[v][i];
+				int validValue = pool[p].valids[v][i];
+				
+				if(!validBuffer)
+					goto setValue;
+				if(validValue < 0){
+					checkFound = true;
+					if(validValue < validBuffer)
+						goto setValue;
+				}
+				else if(!checkFound && validValue > validBuffer)
+					goto setValue;
+			continue;
+			setValue:	
+				checkFound = true;
+				buffer = currPiece;
+				destBuffer = currDest;
+				validBuffer = validValue;
+			}			
+
+	if(pieceholder)
+		*pieceholder = buffer;
+	if(valid){
+		int factor = validBuffer < 0 ? -1 : 1;
+		*valid = validBuffer * factor;
+	}
+	return destBuffer;
+}
+

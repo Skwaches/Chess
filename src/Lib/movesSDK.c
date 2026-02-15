@@ -1,4 +1,4 @@
-#include "../links/funcs.h"
+#include "../Include/funcs.h"
 static sqlite3 *database = NULL;
 static unsigned int gameNumber = 0;
 static char *errorMessage = NULL;
@@ -33,10 +33,11 @@ void closeDataBase(void)
 int createTable(void)
 {
     gameNumber++;
-    char command[56 + 1 + 10];
+    int commandSize = 56 + 1 + 10;
+	char command[commandSize];
     // size of command=56 + NULL terminator and 10 digits from gameNumber;
     // max of 10^10-1 for gameNumber which is pretty damn big;
-    SDL_snprintf(command, sizeof(command), "CREATE TABLE IF NOT EXISTS [%d](Moves);", gameNumber);
+    SDL_snprintf(command, commandSize, "CREATE TABLE IF NOT EXISTS [%d](Moves);", gameNumber);
     if (sqlite3_exec(database, command, 0, 0, &errorMessage) != SQLITE_OK)
     {
         SDL_Log("SQL ERROR : %s", errorMessage);
@@ -205,11 +206,11 @@ bool recordMovesyntax(Piece peace, Tile originalTile, Tile destTile,
             bool sameRank = peace.ptr->pos[a].y == originalTile.y;
             Piece tmpPeace = {peace.ptr, a};
             initMove(tmpPeace, tmpPeace.ptr->pos[a], destTile, player, family, enemy, chosenPiece);
-            if (finalizeMove() != INVALID)
+            if (finalizeMove(NULL) != INVALID)
             {
                 if (!(sameRank || sameFile))
                     sameRank = true;
-                if (sameRank)
+				if (sameRank)
                     origFile = chessX(origTile.x);
                 if (sameFile)
                     origRank = '0' + origTile.y;

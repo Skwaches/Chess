@@ -2,7 +2,7 @@
 #define BOARD_H
 #include "funcs.h"
 TileNode *setTiles(bool start_Offset);
-void unselectAll(TileNode *family, TileNode *opp);
+void unselectAll(TileNode *family, TileNode *opp, bool force);
 bool setRenderColor(SDL_Renderer *renderer, SDL_Color color);
 bool renderTileNodes(SDL_Renderer *renderer, TileNode *HeadTile, SDL_Color colors);
 void freeTileNodes(TileNode *HeadNode);

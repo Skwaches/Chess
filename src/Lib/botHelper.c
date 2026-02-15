@@ -1,4 +1,4 @@
-#include "../links/funcs.h"
+#include "../Include/funcs.h"
 /**
  * \param selectedPiece The piece to validate.
  * \param family Players pieces.
@@ -189,11 +189,13 @@ Tile *validMoves(Piece selectedPiece, PieceNode *family,
     {
         destTile = (Tile){originalTile.x + hopes[l].x, originalTile.y + hopes[l].y};
         initMove(selectedPiece, originalTile, destTile, player, family, enemy, PROMODEFAULT /*Promotion Value is irrelevant here I believe*/);
-        int resulter = finalizeMove();
+        bool tempCheck= false;
+		int resulter = finalizeMove(&tempCheck);
+		int factor = tempCheck ? -1 : 1;
         if (resulter && (truths < MAX_POSSIBLE_MOVES))
         {
             if (valids)
-                valids[truths] = resulter;
+                valids[truths] = resulter * factor;
             dreamer[truths++] = destTile;
         }
     }
@@ -378,3 +380,4 @@ void printMoves(Move *pool)
         SDL_Log("\n");
     }
 }
+

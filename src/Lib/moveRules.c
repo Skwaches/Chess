@@ -1,4 +1,4 @@
-#include "../links/funcs.h"
+# include "../Include/funcs.h"
 
 /**Local holders.
  * This is to let me use the same variables in different functions without any parameters.
@@ -17,8 +17,8 @@ static bool capturing = false;
 static int xVector, yVector, yDisplacement, xDisplacement;
 static Tile
     origTile,
-    *playerKingsTile, tmpKingsTile,
-    *enemyKingsTile;
+    playerKingsTile, tmpKingsTile,
+    enemyKingsTile;
 static Tile *tmpFakeMove1 = NULL;
 static Tile *tmpFakeMove2 = NULL;
 static Tile *tmpFakeMove3 = NULL;
@@ -30,8 +30,6 @@ static Piece tmpPieceFromTile;
  * Reset these values to default if game is reset.*/
 static CastlingOptions whiteCastling = {true, true};
 static CastlingOptions blackCastling = {true, true};
-static Tile whiteKingsTile = {5, WHITE_Y};
-static Tile blackKingsTile = {5, BLACK_Y};
 static Piece enPawn = NULL_PIECE;
 static bool noCastling = false;
 static bool enpassable = false;
@@ -50,11 +48,20 @@ void saveInit(void)
     tmpPlayerBool = playerBool;
     tmpPlayerFamily = playerFamily;
     tmpOpponentFamily = opponentFamily;
-    tmpKingsTile = playerBool ? whiteKingsTile : blackKingsTile;
-    /*Assign storage values.*/
-    playerKingsTile = playerBool ? &whiteKingsTile : &blackKingsTile;
-    enemyKingsTile = !playerBool ? &whiteKingsTile : &blackKingsTile;
+    tmpKingsTile = playerKingsTile;
+	/*Assign storage values.*/
     playerCastling = playerBool ? &whiteCastling : &blackCastling;
+	for(PieceNode* head = playerFamily; head; head = head->next)
+		if(head->type = KING_NAME){
+			playerKingsTile = head->pos[0];
+			break;
+		}
+	for(PieceNode* head = opponentFamily; head ; head = head->next)
+		if(head->type == KING_NAME){
+			enemyKingsTile = head->pos[0];
+			break;
+		}
+	
 }
 
 void resetInit(void)
@@ -67,12 +74,32 @@ void resetStorage(void)
 {
     whiteCastling = (CastlingOptions){true, true};
     blackCastling = (CastlingOptions){true, true};
-    whiteKingsTile = (Tile){5, WHITE_Y};
-    blackKingsTile = (Tile){5, BLACK_Y};
     enPawn = NULL_PIECE;
     noCastling = false;
     enpassable = false;
 }
+/* This is for when the bot is simulating a position on it's own.*/
+static CastlingOptions Whitie, Blackie;
+static Tile Whitney, Blackney;
+static Piece falsy;
+static bool noCastly, enpoosable;
+
+void saveStorage(void){
+	Whitie = whiteCastling;
+	Blackie = blackCastling;
+	falsy = enPawn;
+	noCastly = noCastling;
+	enpoosable = enpassable;
+}
+
+void loadSavePoint(void){
+	whiteCastling = Whitie;
+	blackCastling = Blackie;
+	enPawn = falsy;
+	noCastling = noCastly;
+	enpassable = enpoosable;
+}
+
 /**
  * Returns false if values are invalid.
  * This supplies values for validation.
@@ -96,7 +123,9 @@ bool initMove(Piece selectedPiece, Tile originalTile /*It doesn't recalculate wi
     playerFamily = family;
     opponentFamily = enemy;
     chosenPromo = selectPromo;
-    if (movedPiece.ptr == NULL || movedPiece.index < 0 ||
+ 	
+	
+	if (movedPiece.ptr == NULL || movedPiece.index < 0 ||
         movedPiece.index >= movedPiece.ptr->appearances)
     {
         SDL_Log("moveCalculations: movedPiece invalid\n");
@@ -482,7 +511,7 @@ bool setBadCheck(Tile kingersTile)
  */
 bool setCheck(void)
 {
-    Tile savedKingsTile = *enemyKingsTile;
+    Tile savedKingsTile = enemyKingsTile;
     bool savedPlayer = playerBool;
     PieceNode *friendlies = playerFamily;
     PieceNode *enemies = opponentFamily;
@@ -523,8 +552,6 @@ void updateStorage(void)
             enPawn = movedPiece;
         break;
     case KING_NAME:
-        tmpKingsTile = destTile;
-        *playerKingsTile = destTile;
         if (playerCastling->queenside || playerCastling->kingside)
             *playerCastling = (CastlingOptions){false, false};
         break;
@@ -587,7 +614,7 @@ bool castleThroughCheck(int Originalvalid)
  * PROMOTION for a promotion.
  * PROMOTION_CAPTURE for capture resulting in promotion.
  * */
-int finalizeMove(void)
+int finalizeMove(bool* check)
 {
     saveInit();
     int calculatedvalid = performValidation();
@@ -595,8 +622,10 @@ int finalizeMove(void)
         return INVALID;
 
     fakePlay(calculatedvalid);
-    bool badCheck = setBadCheck(tmpKingsTile);
-    resetInit();
+	if(check)
+		*check = setCheck();
+	bool badCheck = setBadCheck(tmpKingsTile);
+	resetInit();
     unfakePlay();
     bool jumpedCheck = castleThroughCheck(calculatedvalid);
     if (badCheck)

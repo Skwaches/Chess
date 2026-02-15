@@ -8,10 +8,12 @@ bool initMove(Piece selectedPiece, Tile originalTile /*It doesn't recalculate wi
               bool Currentplayer /*True if white.*/,
               PieceNode *family, PieceNode *enemy, char selectPromo);
 void resetStorage(void);
+void saveStorage(void);
+void loadSavePoint(void);
 Tile *fakeMove(Piece piece, Tile dest);
 Tile *fakeDelete(Piece piece);
 void unfakeMove(Piece piece, Tile *tmpHolder);
-int finalizeMove(void);
+int finalizeMove(bool* check);
 void fullLogicUpdate(int valid, bool *cheekers);
 bool setCheck(void);
 #endif
