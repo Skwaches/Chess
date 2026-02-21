@@ -1,4 +1,4 @@
-#include "../Include/funcs.h"
+#include "funcs.h"
 Tile TileFromPos(SDL_FPoint pos)
 {
     Tile mousetile = (Tile){pos.x / TILE_WIDTH + 1, Y_TILES - pos.y / TILE_HEIGHT + 1};

@@ -1,4 +1,4 @@
-#include "../Include/funcs.h"
+#include "funcs.h"
 /**
  * \param selectedPiece The piece to validate.
  * \param family Players pieces.

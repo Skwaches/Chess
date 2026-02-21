@@ -1,4 +1,4 @@
-#include "../Include/funcs.h"
+#include "funcs.h"
 static sqlite3 *database = NULL;
 static unsigned int gameNumber = 0;
 static char *errorMessage = NULL;

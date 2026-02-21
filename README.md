@@ -3,6 +3,7 @@ This is a simple chess game.
 The game doesn't allow most invalid moves. (Outside of 50 move rule + draw by repetition) 
 The bot picks a pseudo-random move out of the available options. ( It's chaotic )
 It's held together by my insomnia.
+This code is so garbage and it's not even funny.
 
 # Inputs
   Middlemouse button toggles a bot for your side.

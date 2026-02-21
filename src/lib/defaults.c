@@ -1,4 +1,4 @@
-#include "../Include/funcs.h"
+#include "funcs.h"
 int PAWN_X[] = {1, 2, 3, 4, 5, 6, 7, 8};
 int BISHOP_X[] = {3, 6};
 int QUEEN_X[] = {4};

@@ -1,4 +1,4 @@
-#include "Include/funcs.h"
+#include "funcs.h"
 
 #pragma region Starting values.
 bool leftMouseHeld = false;
@@ -340,7 +340,7 @@ void update(void)
     }
 
     /*Bot selects move*/
-    if (false && player == BOT)
+    if (player == BOT)
     {
         if (mate || stale)
             return ;
