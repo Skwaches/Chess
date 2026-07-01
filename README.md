@@ -19,5 +19,5 @@ This code is so garbage and it's not even funny.
 * `SDL3_mixer`
   
 # Sources  
-  The piece images used are from www.greenchess.net. 
+  The piece images used are from (greenches)[www.greenchess.net]
   The audio is from www.chess.com

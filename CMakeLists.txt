@@ -3,7 +3,7 @@ project(chess)
 
 #Set output directory for built objects
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/library")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 # File for lsp
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -29,17 +29,23 @@ endif()
 unset(VENDORED CACHE)
 
 #Add library and it's dependencies
-file(GLOB libs ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/*.c)
-add_library(library ${libs})
-target_link_libraries( library PUBLIC 
+add_executable( ${executable} 
+	src/main.c
+	src/defaults.c
+	src/sounds.c
+	src/setBoard.c
+	src/movesSDK.c
+	src/moveRules.c
+	src/bots.c
+	src/botHelper.c
+	src/boardHelper.c
+)
+
+# Guide include search.
+target_include_directories(${executable} PUBLIC include)
+target_link_libraries(${executable} PUBLIC 
 	SDL3::SDL3
 	SDL3_mixer::SDL3_mixer
 	SDL3_image::SDL3_image
 	sqlite3
 )
-# Guide include search.
-target_include_directories(library PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/include)
-
-#Link library to executable.
-add_executable(${executable} ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c)
-target_link_libraries(${executable} PRIVATE library)

@@ -21,7 +21,7 @@ bool movesOver = false;
 bool mate = false;
 bool stale = false;
 
-Tile (*BOT_MAIN)(Move *, Piece *, int *) = &bot5;
+Tile (*BOT_MAIN)(Move *, Piece *, int *) = &bot4;
 static Tile destTile, originalTile, *validDest;
 static int destOptions = 0;
 static int *validCounters;
@@ -308,7 +308,7 @@ void update(void)
 			TileNode* currentTile = nodeFromTile(mouseTile, headLightTile, headDarkTile);
 		    if(currentTile && currentTile != fromTileNode && currentTile != toTileNode)
 				currentTile->selected = PIECE_HOVER;
-				prevHoverTile =	currentTile;			
+			prevHoverTile =	currentTile;			
 			}}
 	}
     

@@ -2,6 +2,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 #include "funcs.h"
+
 // SCREEN
 #define SCREENWIDTH 600
 #define SCREENHEIGHT 600
